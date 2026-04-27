@@ -94,6 +94,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .balance-bar{margin-top:16px;height:6px;background:rgba(0,0,0,.22);border-radius:3px;overflow:hidden}
 .balance-bar-fill{height:100%;background:#fff;border-radius:3px;transition:width .4s}
 
+/* ── Bouton conso désactivé (vraiment désactivé) ── */
+.drink-btn.disabled{opacity:.35;cursor:not-allowed;pointer-events:none;filter:grayscale(.5)}
+
+/* ── Badge notification onglets ── */
+.tab-badge{display:inline-block;background:var(--danger);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:5px;font-family:'DM Mono',monospace;vertical-align:middle}
+
+/* ── Demandes de carte ── */
+.req-card{background:var(--bg2);border:1px solid var(--warning);border-radius:var(--r);margin-bottom:10px;padding:14px 16px}
+.req-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.req-meta{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+.req-method{display:inline-flex;align-items:center;gap:6px;background:rgba(240,160,48,.15);color:var(--warning);padding:4px 10px;border-radius:14px;font-size:12px;font-weight:600;margin-bottom:10px}
+
 /* ── Historique transactions ── */
 .tx-row{padding:11px 0;border-bottom:1px solid var(--border)}
 .tx-row:last-child{border-bottom:none}
@@ -133,7 +145,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="nav" id="main-nav">
     <button class="active" onclick="mainTab('cartes',this)">Cartes</button>
     <button onclick="mainTab('scan',this)">Scanner</button>
-    <button onclick="mainTab('admin',this)">Admin</button>
+    <button onclick="mainTab('soldees',this)">Soldées</button>
+    <button onclick="mainTab('admin',this)" id="admin-tab-btn">Admin<span id="admin-tab-badge" style="display:none" class="tab-badge">0</span></button>
   </div>
 
   <!-- TAB: CARTES -->
@@ -143,6 +156,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <input class="inp" style="padding-left:36px;margin-bottom:0" id="bar-search" placeholder="Rechercher par prénom, nom ou email…" oninput="renderBarList()" />
     </div>
     <div id="bar-list"></div>
+  </div>
+
+  <!-- TAB: SOLDÉES -->
+  <div class="content" id="tab-soldees" style="display:none">
+    <div class="card" style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px">
+      Cartes entièrement consommées. Tu peux les rouvrir pour consulter leur historique.
+    </div>
+    <div id="soldees-list"></div>
   </div>
 
   <!-- TAB: SCAN -->
@@ -175,6 +196,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
     <div id="admin-main-view" style="display:none">
+      <div class="card">
+        <div class="card-label">Demandes de carte (cash) <span id="requests-count-badge" class="tab-badge" style="display:none">0</span></div>
+        <div id="admin-requests-content"></div>
+      </div>
       <div id="admin-stats-content"></div>
       <div class="card">
         <div class="card-label">Réglages</div>
@@ -306,9 +331,8 @@ async function unlockBar() {
   barUnlocked = true;
   document.getElementById('access-error').style.display = 'none';
   showScreen('screen-main');
-  // Nettoie en arrière-plan les cartes soldées de plus de 24h
-  cleanupOldSoldeeCards().catch(e => console.warn('Cleanup:', e));
   renderBarList();
+  watchPendingRequests();
   document.getElementById('bar-mode-label').textContent = 'Mode bar';
 }
 
@@ -369,6 +393,7 @@ async function unlockAdmin() {
   document.getElementById('admin-lock-view').style.display = 'none';
   document.getElementById('admin-main-view').style.display = 'block';
   renderAdminStats();
+  renderAdminRequests();
 }
 
 // ════════════════════════════════════════
@@ -377,11 +402,12 @@ async function unlockAdmin() {
 function mainTab(t, btn) {
   document.querySelectorAll('#main-nav button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  ['cartes','scan','admin'].forEach(v => {
+  ['cartes','scan','soldees','admin'].forEach(v => {
     document.getElementById('tab-'+v).style.display = v === t ? 'block' : 'none';
   });
   if (t === 'cartes') renderBarList();
-  if (t === 'admin' && adminUnlocked) renderAdminStats();
+  if (t === 'soldees') renderSoldeesList();
+  if (t === 'admin' && adminUnlocked) { renderAdminStats(); renderAdminRequests(); }
   if (t !== 'scan') stopScanner();
 }
 
@@ -516,6 +542,161 @@ async function renderBarList() {
 }
 
 // ════════════════════════════════════════
+// SOLDÉES (cartes vides) — rangées dans un onglet
+// ════════════════════════════════════════
+async function renderSoldeesList() {
+  const snap = await db.ref('cards').once('value');
+  const cards = snap.val() || {};
+  const el = document.getElementById('soldees-list');
+
+  const filtered = Object.entries(cards).filter(([id, c]) => {
+    return c.soldeeAt || calcSpent(c) >= c.amount;
+  });
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty">Aucune carte soldée</div>';
+    return;
+  }
+
+  // Tri par date de soldage décroissante
+  filtered.sort((a, b) => (b[1].soldeeAt || 0) - (a[1].soldeeAt || 0));
+
+  el.innerHTML = filtered.map(([id, card]) => {
+    const spent = calcSpent(card);
+    const name  = cardDisplayName(card);
+    const when  = card.soldeeAt ? new Date(card.soldeeAt).toLocaleString('fr-BE', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+    return `
+      <div class="bar-card soldee">
+        <div class="bar-card-head" onclick="openOrder('${id}')">
+          <div>
+            <div style="font-size:16px;font-weight:600">${name}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${id.slice(-8)} · soldée le ${when}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="badge badge-${card.amount}">${card.amount} €</span>
+            <div style="font-size:11px;color:var(--danger);font-family:'DM Mono',monospace;margin-top:3px;font-weight:700">SOLDÉE</div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--danger)"></div></div>
+          <span class="progress-text">${spent.toFixed(2)} / ${card.amount} €</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+// DEMANDES DE CARTE (paiement cash)
+// ════════════════════════════════════════
+let requestsListener = null;
+
+function watchPendingRequests() {
+  if (requestsListener) return;
+  requestsListener = db.ref('cardRequests').orderByChild('status').equalTo('pending');
+  requestsListener.on('value', snap => {
+    const requests = snap.val() || {};
+    const count = Object.keys(requests).length;
+    // Badge sur l'onglet Admin (visible sans déverrouillage)
+    const tabBadge = document.getElementById('admin-tab-badge');
+    if (count > 0) {
+      tabBadge.textContent = count;
+      tabBadge.style.display = 'inline-block';
+    } else {
+      tabBadge.style.display = 'none';
+    }
+    // Si admin ouvert, on rafraîchit la liste
+    if (adminUnlocked && document.getElementById('tab-admin').style.display !== 'none') {
+      renderAdminRequests();
+    }
+  });
+}
+
+async function renderAdminRequests() {
+  const snap = await db.ref('cardRequests').orderByChild('status').equalTo('pending').once('value');
+  const requests = snap.val() || {};
+  const el = document.getElementById('admin-requests-content');
+  const countBadge = document.getElementById('requests-count-badge');
+
+  const entries = Object.entries(requests).sort((a,b) => (a[1].createdAt > b[1].createdAt ? 1 : -1));
+
+  if (!entries.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0">Aucune demande en attente</div>';
+    countBadge.style.display = 'none';
+    return;
+  }
+
+  countBadge.textContent = entries.length;
+  countBadge.style.display = 'inline-block';
+
+  el.innerHTML = entries.map(([id, req]) => {
+    const name = req.displayName || ((req.firstname || '') + ' ' + (req.lastname || '')).trim() || req.email || 'Anonyme';
+    return `
+      <div class="req-card">
+        <div class="req-row">
+          <div>
+            <div style="font-size:15px;font-weight:600">${name}</div>
+            <div class="req-meta">${req.email || ''}</div>
+            <div class="req-meta">${req.requestedTime || ''}</div>
+          </div>
+          <span class="badge badge-${req.amount}">${req.amount} €</span>
+        </div>
+        <div class="req-method">💵 Paiement cash</div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="rejectRequest('${id}')">Refuser</button>
+          <button class="btn btn-success" onclick="approveRequest('${id}')">Approuver</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function approveRequest(reqId) {
+  const reqSnap = await db.ref('cardRequests/' + reqId).once('value');
+  const req = reqSnap.val();
+  if (!req) { showToast('Demande introuvable'); return; }
+
+  // Crée la carte (même structure que les paiements en ligne)
+  const card = {
+    uid: req.uid,
+    email: req.email,
+    firstname: req.firstname || '',
+    lastname:  req.lastname  || '',
+    displayName: req.displayName || ((req.firstname || '') + ' ' + (req.lastname || '')).trim() || (req.email || '').split('@')[0],
+    amount: req.amount,
+    transactions: {},
+    paymentMethod: 'cash',
+    requestId: reqId,
+    createdAt: new Date().toISOString(),
+    createdTime: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})
+  };
+  const cardRef = db.ref('cards').push();
+  await cardRef.set(card);
+  await db.ref('users/' + req.uid + '/activeCardId').set(cardRef.key);
+  await db.ref('cardRequests/' + reqId).update({
+    status: 'approved',
+    approvedAt: Date.now(),
+    cardId: cardRef.key
+  });
+  await db.ref('users/' + req.uid + '/pendingRequestId').remove();
+  showToast('Demande approuvée ✓');
+  renderAdminRequests();
+  renderBarList();
+}
+
+async function rejectRequest(reqId) {
+  if (!confirm('Refuser cette demande ?')) return;
+  const reqSnap = await db.ref('cardRequests/' + reqId).once('value');
+  const req = reqSnap.val();
+  if (!req) return;
+  await db.ref('cardRequests/' + reqId).update({
+    status: 'rejected',
+    rejectedAt: Date.now()
+  });
+  await db.ref('users/' + req.uid + '/pendingRequestId').remove();
+  showToast('Demande refusée');
+  renderAdminRequests();
+}
+
+// ════════════════════════════════════════
 // ORDER
 // ════════════════════════════════════════
 async function openOrder(id) {
@@ -561,9 +742,10 @@ function renderOrderView(card) {
 
   document.getElementById('order-drinks').innerHTML = DRINKS.map(d => {
     const qty = cart[d.id] || 0;
-    const cantAfford = available < d.price && qty === 0;
+    // Désactivé dès que le prix dépasse ce qu'il reste après le panier en cours
+    const cantAfford = available < d.price;
     return `<div class="drink-btn ${qty > 0 ? 'in-cart' : ''} ${cantAfford ? 'disabled' : ''}"
-      onclick="addToCart('${d.id}',${cantAfford})">
+      ${cantAfford ? '' : `onclick="addToCart('${d.id}')"`}>
       ${qty > 0 ? `<div class="drink-qty">${qty}</div>` : ''}
       <div class="drink-name">${d.label}</div>
       <div class="drink-price">${d.price} €</div>
@@ -574,10 +756,22 @@ function renderOrderView(card) {
   renderHistory(card);
 }
 
-function addToCart(drinkId, cantAfford) {
-  if (cantAfford) { showToast('Solde insuffisant'); return; }
+async function addToCart(drinkId) {
+  const card = await db.ref('cards/' + currentCardId).once('value').then(s => s.val());
+  if (!card) return;
+  const drink = DRINKS.find(x => x.id === drinkId);
+  if (!drink) return;
+  const spent = calcSpent(card);
+  const cartTotal = Object.entries(cart).reduce((s,[did,qty]) => {
+    const d = DRINKS.find(x => x.id === did); return s + (d ? d.price * qty : 0);
+  }, 0);
+  // Double check côté JS : on n'autorise pas l'ajout si ça dépasse
+  if (spent + cartTotal + drink.price > card.amount) {
+    showToast('Solde insuffisant');
+    return;
+  }
   cart[drinkId] = (cart[drinkId] || 0) + 1;
-  db.ref('cards/' + currentCardId).once('value').then(s => { if(s.val()) renderOrderView(s.val()); });
+  renderOrderView(card);
 }
 
 function renderCart() {
@@ -624,7 +818,11 @@ async function validateCart() {
     items, total: cartTotal, ts: Date.now(),
     time: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})
   });
+  // Vidage explicite du panier — même si le listener n'a pas encore re-rendu
   cart = {};
+  renderCart();
+  const updatedCard = await db.ref('cards/' + currentCardId).once('value').then(s => s.val());
+  if (updatedCard) renderOrderView(updatedCard);
 
   const newSpent = spent + cartTotal;
   // Carte entièrement consommée → on la marque (sera purgée après 24h par le cleanup)
@@ -708,6 +906,18 @@ async function confirmUncheck() {
   const real = await db.ref('config/adminPw').once('value').then(s => s.val() || 'admin2024');
   if (pw !== real) { document.getElementById('uncheck-err').style.display = 'block'; return; }
   await db.ref('cards/' + currentCardId + '/transactions/' + pendingUncheck).remove();
+  // Si la carte était soldée mais redevient utilisable après l'uncheck → on la "réveille"
+  const refreshed = await db.ref('cards/' + currentCardId).once('value').then(s => s.val());
+  if (refreshed && refreshed.soldeeAt && calcSpent(refreshed) < refreshed.amount) {
+    await db.ref('cards/' + currentCardId + '/soldeeAt').remove();
+    // Si l'utilisateur n'a plus de carte active, on rebranche celle-ci
+    if (refreshed.uid) {
+      const activeSnap = await db.ref('users/' + refreshed.uid + '/activeCardId').once('value');
+      if (!activeSnap.val()) {
+        await db.ref('users/' + refreshed.uid + '/activeCardId').set(currentCardId);
+      }
+    }
+  }
   closeModal('modal-uncheck');
   showToast('Transaction annulée');
 }

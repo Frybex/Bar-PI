@@ -5,7 +5,7 @@
 //   - Reste (icônes, fonts, libs CDN)  → STALE-WHILE-REVALIDATE
 //   - Firebase auth/db  → bypass complet (jamais en cache)
 // ════════════════════════════════════════
-const CACHE = 'bar-pi-v1';
+const CACHE = 'bar-pi-v2';
 const CORE_ASSETS = [
   './',
   './index.html',

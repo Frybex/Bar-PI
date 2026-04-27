@@ -75,6 +75,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .pwa-banner-icon{font-size:28px;flex-shrink:0}
 .pwa-banner-text{font-size:13px;color:var(--muted);line-height:1.5;flex:1}
 .pwa-banner-text strong{color:var(--text);display:block;margin-bottom:2px}
+
+/* ── Carte épuisée (visuel flagrant) ── */
+.empty-card-hero{background:linear-gradient(135deg,#e85555 0%,#8a2828 100%);border-radius:var(--r);padding:36px 24px;margin-bottom:18px;text-align:center;color:#fff;box-shadow:0 8px 24px rgba(232,85,85,.3);position:relative;overflow:hidden}
+.empty-card-hero::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.04) 0,rgba(255,255,255,.04) 6px,transparent 6px,transparent 12px);pointer-events:none}
+.empty-card-icon{font-size:54px;margin-bottom:10px;filter:grayscale(.4) opacity(.85)}
+.empty-card-title{font-size:22px;font-weight:700;letter-spacing:-.3px;margin-bottom:4px}
+.empty-card-sub{font-size:13px;opacity:.85;margin-bottom:18px;font-family:'DM Mono',monospace}
+.empty-card-amount{font-size:54px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;letter-spacing:-2px;margin-bottom:10px}
+.empty-card-meta{font-size:12px;opacity:.85;font-family:'DM Mono',monospace}
+
+/* ── Carte épuisée dans le wallet ── */
+.wallet-card-empty{position:relative;border:2px solid var(--danger) !important;background:linear-gradient(135deg,rgba(232,85,85,.15) 0%,rgba(232,85,85,.05) 100%) !important}
+.wallet-card-empty::after{content:"ÉPUISÉE";position:absolute;top:10px;right:10px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;font-family:'DM Mono',monospace;letter-spacing:1px;z-index:2}
+.wallet-card-empty .wallet-name{opacity:.6}
 </style>
 </head>
 <body>
@@ -95,16 +109,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="sub-text">Crée ta carte boisson et suis ton solde en direct.</div>
     <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:0">
       <div id="login-step1">
-        <!-- Toggle Connexion / Inscription -->
+        <!-- Toggle Connexion / Inscription : "Créer un compte" actif par défaut -->
         <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px;margin-bottom:14px">
-          <button id="tab-signin" onclick="setLoginMode('signin')"
-            style="flex:1;padding:9px;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;background:var(--accent);color:#fff;font-family:'DM Sans',sans-serif;transition:.15s">Connexion</button>
           <button id="tab-signup" onclick="setLoginMode('signup')"
-            style="flex:1;padding:9px;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.15s">Créer un compte</button>
+            style="flex:1;padding:9px;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;background:var(--accent);color:#fff;font-family:'DM Sans',sans-serif;transition:.15s">Créer un compte</button>
+          <button id="tab-signin" onclick="setLoginMode('signin')"
+            style="flex:1;padding:9px;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.15s">Connexion</button>
         </div>
 
         <!-- Champs prénom + nom (uniquement en mode signup) -->
-        <div id="signup-name-fields" style="display:none">
+        <div id="signup-name-fields" style="display:block">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <input class="inp" type="text" id="firstname-input" placeholder="Prénom" autocomplete="given-name" />
             <input class="inp" type="text" id="lastname-input" placeholder="Nom" autocomplete="family-name" />
@@ -112,12 +126,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
 
         <input class="inp" type="email" id="email-input" placeholder="ton@email.com" autocomplete="email" />
-        <input class="inp" type="password" id="password-input" placeholder="Mot de passe (min 6 caractères)" autocomplete="current-password" />
-        <button class="btn btn-primary" id="login-btn" onclick="loginSubmit()">Se connecter →</button>
+        <input class="inp" type="password" id="password-input" placeholder="Choisis un mot de passe (min 6 car.)" autocomplete="new-password" />
+        <button class="btn btn-primary" id="login-btn" onclick="loginSubmit()">Créer mon compte →</button>
         <div id="login-error" style="font-size:12px;color:var(--danger);margin-top:8px;display:none"></div>
 
         <div style="text-align:center;margin-top:14px">
-          <a id="forgot-link" onclick="forgotPassword()" style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline">Mot de passe oublié ?</a>
+          <a id="forgot-link" onclick="forgotPassword()" style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline;display:none">Mot de passe oublié ?</a>
         </div>
       </div>
     </div>
@@ -175,17 +189,70 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <span style="font-size:14px;color:var(--muted)">Carte boisson</span>
         <span id="payment-amount-display" style="font-size:20px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent)">10 €</span>
       </div>
+    </div>
+
+    <!-- Choix mode de paiement -->
+    <div id="payment-method-choice" class="card">
+      <div class="card-label">Mode de paiement</div>
+      <button class="btn btn-primary" style="margin-bottom:10px" onclick="choosePayment('online')">💳 Carte bancaire / Bancontact</button>
+      <button class="btn btn-outline" onclick="choosePayment('cash')">💵 Payer en cash au bar</button>
       <div style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5">
-        Paiement sécurisé par SumUp. Accepte Bancontact et Wero.
+        Carte : paiement sécurisé immédiat via SumUp.<br>
+        Cash : ta demande sera validée par l'équipe du bar.
       </div>
     </div>
-    <div id="sumup-container" style="min-height:200px;display:flex;align-items:center;justify-content:center">
-      <div class="spinner"></div>
+
+    <!-- Zone SumUp -->
+    <div id="payment-online-zone" style="display:none">
+      <div id="sumup-container" style="min-height:200px;display:flex;align-items:center;justify-content:center">
+        <div class="spinner"></div>
+      </div>
+      <div id="payment-fallback" style="display:none">
+        <div class="info-box">⚠️ Le module de paiement SumUp n'est pas encore configuré. Clique ci-dessous pour simuler un paiement (mode test).</div>
+        <button class="btn btn-success" onclick="simulatePaymentSuccess()">✓ Simuler paiement réussi (test)</button>
+      </div>
     </div>
-    <div id="payment-fallback" style="display:none">
-      <div class="info-box">⚠️ Le module de paiement SumUp n'est pas encore configuré. Clique ci-dessous pour simuler un paiement (mode test).</div>
-      <button class="btn btn-success" onclick="simulatePaymentSuccess()">✓ Simuler paiement réussi (test)</button>
+
+    <!-- Zone confirmation cash -->
+    <div id="payment-cash-zone" style="display:none">
+      <div class="info-box" style="line-height:1.6">
+        💵 <strong>Paiement en cash</strong><br>
+        Présente-toi au bar pour régler ton montant. Une fois validé par l'équipe, ta carte apparaîtra automatiquement ici.
+      </div>
+      <button class="btn btn-primary" onclick="submitCashRequest()">Envoyer la demande →</button>
     </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: PENDING REQUEST (en attente validation cash) ══ -->
+<div id="screen-pending" class="screen">
+  <div class="center-screen">
+    <div style="font-size:52px">⏳</div>
+    <div class="big-title">En attente du bar</div>
+    <div class="sub-text" style="max-width:300px">
+      Présente-toi au bar pour régler <strong id="pending-amount" style="color:var(--accent)">— €</strong> en cash. Dès validation, ta carte apparaîtra ici.
+    </div>
+    <div class="spinner" style="margin-top:8px"></div>
+    <button class="btn btn-outline" style="max-width:300px;margin-top:16px" onclick="cancelPendingRequest()">Annuler la demande</button>
+  </div>
+</div>
+
+<!-- ══ SCREEN: CARTE ÉPUISÉE ══ -->
+<div id="screen-card-empty" class="screen">
+  <div class="header">
+    <div><h1>Carte épuisée</h1></div>
+    <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="logout()">Déco</button>
+  </div>
+  <div class="content" style="display:flex;flex-direction:column;justify-content:center;flex:1">
+    <div class="empty-card-hero">
+      <div class="empty-card-icon">🥤</div>
+      <div class="empty-card-title">Ta carte est vide</div>
+      <div class="empty-card-sub" id="empty-card-name">—</div>
+      <div class="empty-card-amount">0,00 €</div>
+      <div class="empty-card-meta">Tu as bu pour <strong id="empty-card-spent">— €</strong></div>
+    </div>
+    <button class="btn btn-primary" style="font-size:17px;padding:18px;margin-bottom:10px" onclick="showScreen('screen-home')">🍺 Acheter une nouvelle carte</button>
+    <button class="btn btn-outline" onclick="showScreen('screen-wallet')">Voir mes cartes</button>
   </div>
 </div>
 
@@ -198,6 +265,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="qr-wrap">
     <div class="qr-info">
       <div class="big-name" id="qr-name"></div>
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-top:8px;margin-bottom:2px">Solde restant</div>
       <div class="big-amount" id="qr-amount"></div>
       <div class="qr-id" id="qr-id-display"></div>
     </div>
@@ -216,7 +284,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
   <div class="content">
     <div id="wallet-list"></div>
-    <button class="btn btn-outline" onclick="showScreen('screen-home')" style="margin-top:4px">+ Acheter une nouvelle carte</button>
+    <button class="btn btn-primary" onclick="showScreen('screen-home')" style="margin-top:4px">+ Acheter une nouvelle carte</button>
   </div>
 </div>
 
@@ -323,8 +391,8 @@ function initAuth() {
   }
 }
 
-// Mode courant : 'signin' (par défaut) ou 'signup'
-let loginMode = 'signin';
+// Mode courant : 'signup' par défaut (priorité création de compte pour les nouveaux clients)
+let loginMode = 'signup';
 
 function setLoginMode(mode) {
   loginMode = mode;
@@ -463,14 +531,32 @@ async function logout() {
 // USER STATE
 // ════════════════════════════════════════
 async function loadUserState() {
-  const snap = await db.ref('users/' + currentUser.uid + '/activeCardId').once('value');
-  const activeCardId = snap.val();
-
   document.getElementById('wallet-email-display').textContent = currentUser.email;
 
   const eventSnap = await db.ref('config/eventName').once('value');
   const eventName = eventSnap.val() || 'Bar Pi';
   document.getElementById('home-event-name').textContent = eventName;
+
+  // 1. Demande de carte cash en attente ?
+  const pendingReqIdSnap = await db.ref('users/' + currentUser.uid + '/pendingRequestId').once('value');
+  const pendingReqId = pendingReqIdSnap.val();
+  if (pendingReqId) {
+    const reqSnap = await db.ref('cardRequests/' + pendingReqId).once('value');
+    const req = reqSnap.val();
+    if (req && req.status === 'pending') {
+      showPendingScreen(pendingReqId, req.amount);
+      return;
+    }
+    // Demande approuvée/refusée/disparue → on nettoie
+    if (req && req.status === 'approved' && req.cardId) {
+      await db.ref('users/' + currentUser.uid + '/activeCardId').set(req.cardId);
+    }
+    await db.ref('users/' + currentUser.uid + '/pendingRequestId').remove();
+  }
+
+  // 2. Carte active ?
+  const snap = await db.ref('users/' + currentUser.uid + '/activeCardId').once('value');
+  const activeCardId = snap.val();
 
   if (activeCardId) {
     const cardSnap = await db.ref('cards/' + activeCardId).once('value');
@@ -482,8 +568,13 @@ async function loadUserState() {
       showQR(activeCardId, card);
       return;
     }
-    // Carte inexistante OU soldée → on détache la référence
-    // (laisse l'utilisateur libre d'aller sur le wallet ou racheter)
+    if (card && isSoldee) {
+      // Carte épuisée → on la détache et on montre l'écran "carte vide" avec gros bouton
+      await db.ref('users/' + currentUser.uid + '/activeCardId').remove();
+      showCardEmptyScreen(card);
+      return;
+    }
+    // Carte inexistante → on détache silencieusement
     await db.ref('users/' + currentUser.uid + '/activeCardId').remove();
   }
 
@@ -509,8 +600,97 @@ function selectAmount(a) {
 function startPurchase() {
   if (!selectedAmount) return;
   document.getElementById('payment-amount-display').textContent = selectedAmount + ' €';
+  // Reset l'UI : on remontre le choix de méthode de paiement
+  document.getElementById('payment-method-choice').style.display = 'block';
+  document.getElementById('payment-online-zone').style.display   = 'none';
+  document.getElementById('payment-cash-zone').style.display     = 'none';
   showScreen('screen-payment');
-  loadSumUp();
+}
+
+function choosePayment(method) {
+  if (method === 'online') {
+    document.getElementById('payment-method-choice').style.display = 'none';
+    document.getElementById('payment-online-zone').style.display   = 'block';
+    loadSumUp();
+  } else if (method === 'cash') {
+    document.getElementById('payment-method-choice').style.display = 'none';
+    document.getElementById('payment-cash-zone').style.display     = 'block';
+  }
+}
+
+async function submitCashRequest() {
+  if (!selectedAmount || !currentUser) return;
+  // Récupère le profil pour pré-remplir
+  const profSnap = await db.ref('users/' + currentUser.uid + '/profile').once('value');
+  const prof = profSnap.val() || {};
+  const displayName = (prof.firstname || prof.lastname)
+    ? ((prof.firstname || '') + ' ' + (prof.lastname || '')).trim()
+    : (currentUser.displayName || (currentUser.email || '').split('@')[0]);
+
+  const req = {
+    uid:        currentUser.uid,
+    email:      currentUser.email,
+    firstname:  prof.firstname || '',
+    lastname:   prof.lastname  || '',
+    displayName,
+    amount:     selectedAmount,
+    paymentMethod: 'cash',
+    status:     'pending',
+    createdAt:  Date.now(),
+    requestedTime: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})
+  };
+  const ref = db.ref('cardRequests').push();
+  await ref.set(req);
+  await db.ref('users/' + currentUser.uid + '/pendingRequestId').set(ref.key);
+  showToast('Demande envoyée — direction le bar 🍺');
+  showPendingScreen(ref.key, selectedAmount);
+}
+
+let pendingRequestUnsub = null;
+
+function showPendingScreen(requestId, amount) {
+  document.getElementById('pending-amount').textContent = amount + ' €';
+  showScreen('screen-pending');
+
+  if (pendingRequestUnsub) pendingRequestUnsub();
+  const ref = db.ref('cardRequests/' + requestId);
+  ref.on('value', snap => {
+    const req = snap.val();
+    if (!req) {
+      // Demande supprimée → retour home
+      ref.off();
+      pendingRequestUnsub = null;
+      loadUserState();
+      return;
+    }
+    if (req.status === 'approved' && req.cardId) {
+      ref.off();
+      pendingRequestUnsub = null;
+      showToast('Demande validée ✓');
+      // Recharge l'état utilisateur → la nouvelle carte (active) sera affichée
+      loadUserState();
+    } else if (req.status === 'rejected') {
+      ref.off();
+      pendingRequestUnsub = null;
+      showToast('Demande refusée');
+      db.ref('users/' + currentUser.uid + '/pendingRequestId').remove();
+      showScreen('screen-home');
+    }
+  });
+  pendingRequestUnsub = () => ref.off();
+}
+
+async function cancelPendingRequest() {
+  if (!confirm('Annuler ta demande de carte ?')) return;
+  const reqIdSnap = await db.ref('users/' + currentUser.uid + '/pendingRequestId').once('value');
+  const reqId = reqIdSnap.val();
+  if (reqId) {
+    await db.ref('cardRequests/' + reqId).remove();
+    await db.ref('users/' + currentUser.uid + '/pendingRequestId').remove();
+  }
+  if (pendingRequestUnsub) { pendingRequestUnsub(); pendingRequestUnsub = null; }
+  showToast('Demande annulée');
+  showScreen('screen-home');
 }
 
 function cancelPayment() {
@@ -617,7 +797,10 @@ function cardDisplayName(card) {
 
 function showQR(cardId, card) {
   document.getElementById('qr-name').textContent = cardDisplayName(card);
-  document.getElementById('qr-amount').textContent = card.amount + ' €';
+  // Au-dessus du QR : on affiche le SOLDE RESTANT (pas la valeur initiale de la carte)
+  const initialSpent = calcSpent(card);
+  const initialLeft  = Math.max(0, card.amount - initialSpent);
+  document.getElementById('qr-amount').textContent = initialLeft.toFixed(2) + ' €';
   document.getElementById('qr-id-display').textContent = cardId;
 
   const el = document.getElementById('qr-code-el');
@@ -633,18 +816,17 @@ function showQR(cardId, card) {
   db.ref('cards/' + cardId).on('value', snap => {
     const card = snap.val();
     if (!card) {
-      // Carte purgée par le cleanup 24h → retour silencieux à l'accueil
+      // Carte supprimée par l'admin → retour silencieux
       db.ref('cards/' + cardId).off();
       loadUserState();
       return;
     }
     updateQRInfo(cardId, card);
-    // Carte vient d'être soldée par le bar → on bascule vers le wallet
+    // Carte vient d'être soldée par le bar → écran "carte épuisée" avec gros bouton
     const spent = calcSpent(card);
     if (spent >= card.amount || card.soldeeAt) {
       db.ref('cards/' + cardId).off();
-      showToast('Carte soldée 🎉');
-      setTimeout(() => loadUserState(), 1500);
+      showCardEmptyScreen(card);
     }
   });
 }
@@ -652,7 +834,16 @@ function showQR(cardId, card) {
 function updateQRInfo(cardId, card) {
   const spent = calcSpent(card);
   const left  = Math.max(0, card.amount - spent);
-  // Met à jour silencieusement, l'utilisateur voit son solde dans le wallet
+  // Met à jour le solde affiché au-dessus du QR en temps réel
+  const amtEl = document.getElementById('qr-amount');
+  if (amtEl) amtEl.textContent = left.toFixed(2) + ' €';
+}
+
+function showCardEmptyScreen(card) {
+  document.getElementById('empty-card-name').textContent = cardDisplayName(card) || '';
+  const spent = calcSpent(card);
+  document.getElementById('empty-card-spent').textContent = spent.toFixed(2) + ' €';
+  showScreen('screen-card-empty');
 }
 
 // ════════════════════════════════════════
@@ -672,25 +863,26 @@ async function renderWallet() {
     const spent = calcSpent(card);
     const left  = Math.max(0, card.amount - spent);
     const pct   = Math.min(100, Math.round(spent / card.amount * 100));
-    const full  = spent >= card.amount;
+    const full  = spent >= card.amount || card.soldeeAt;
     const color = full ? 'var(--danger)' : 'var(--accent)';
+    const wrapClass = full ? 'wallet-card-empty' : '';
     return `
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer" onclick="showQRForCard('${id}')">
+      <div class="${wrapClass}" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer" onclick="${full ? '' : "showQRForCard('"+id+"')"}">
           <div>
-            <div style="font-size:15px;font-weight:600">${cardDisplayName(card) || 'Ma carte'}</div>
+            <div class="wallet-name" style="font-size:15px;font-weight:600">${cardDisplayName(card) || 'Ma carte'}</div>
             <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${card.createdTime} · ${id.slice(-6)}</div>
           </div>
           <div style="text-align:right">
             <span class="badge badge-${card.amount}">${card.amount} €</span>
-            <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px">${left.toFixed(2)} € restant</div>
+            <div style="font-size:12px;color:${full?'var(--danger)':'var(--muted)'};font-family:'DM Mono',monospace;margin-top:4px;font-weight:${full?'700':'400'}">${full ? '0,00 € restant' : left.toFixed(2) + ' € restant'}</div>
           </div>
         </div>
         <div style="padding:0 16px 14px;display:flex;align-items:center;gap:10px">
           <div style="flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
             <div style="width:${pct}%;height:100%;background:${color};border-radius:2px;transition:width .4s"></div>
           </div>
-          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap">${pct}%${full?' SOLDÉE':''}</span>
+          <span style="font-size:11px;color:${full?'var(--danger)':'var(--muted)'};font-family:'DM Mono',monospace;white-space:nowrap;font-weight:${full?'700':'400'}">${pct}%${full?' ÉPUISÉE':''}</span>
         </div>
         <div style="padding:0 16px 14px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Consommations :</div>
@@ -758,6 +950,8 @@ function showToast(msg) {
 
 // Démarrage
 initAuth();
+// Force le mode signup (Créer un compte) au chargement
+try { setLoginMode('signup'); } catch(_){}
 
 // Service Worker — auto-update au chargement (plus besoin de Ctrl+Shift+R)
 if ('serviceWorker' in navigator) {
