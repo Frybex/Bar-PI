@@ -13,8 +13,10 @@
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
 :root{--bg:#0f0f13;--bg2:#18181f;--bg3:#21212b;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--text:#f0f0f0;--muted:#888;--accent:#7c6ff7;--accent2:#5a52d5;--success:#22c97a;--danger:#e85555;--warning:#f0a030;--r:12px;--r-sm:8px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
@@ -310,8 +312,8 @@ const FIREBASE_CONFIG = {
 };
 
 // SumUp — remplace par ton Merchant Code et ta clé API
-const SUMUP_MERCHANT_CODE = "YOUR_MERCHANT_CODE";
-const SUMUP_API_KEY        = "YOUR_SUMUP_API_KEY"; // Client Credentials
+const SUMUP_MERCHANT_CODE = "ME4DN43S";
+const SUMUP_API_KEY        = "sup_pk_1ppZgCz8QY0hKalfiObtWcpIOti5cAZaF";
 
 // URL de cette page (utilisée pour replaceState après reset password)
 const APP_URL = window.location.origin + window.location.pathname;
@@ -331,6 +333,14 @@ const DRINKS = [
 let currentUser = null;
 let selectedAmount = null;
 let deferredInstallPrompt = null;
+let userProfile = null;
+
+async function getProfile() {
+  if (userProfile) return userProfile;
+  const snap = await db.ref('users/' + currentUser.uid + '/profile').once('value');
+  userProfile = snap.val() || {};
+  return userProfile;
+}
 
 // ════════════════════════════════════════
 // PWA INSTALL
@@ -488,10 +498,9 @@ async function loginSubmit() {
       // Met à jour le displayName Firebase ("Prénom Nom")
       await cred.user.updateProfile({ displayName: firstname + ' ' + lastname });
       // Sauvegarde aussi le profil détaillé en BDD pour pouvoir requêter par prénom/nom
-      await db.ref('users/' + cred.user.uid + '/profile').set({
-        firstname, lastname, email,
-        createdAt: new Date().toISOString()
-      });
+      const profileData = { firstname, lastname, email, createdAt: new Date().toISOString() };
+      await db.ref('users/' + cred.user.uid + '/profile').set(profileData);
+      userProfile = profileData;
     } else {
       await auth.signInWithEmailAndPassword(email, pw);
     }
@@ -522,6 +531,7 @@ async function forgotPassword() {
 }
 
 async function logout() {
+  userProfile = null;
   await auth.signOut();
   currentUser = null;
   showScreen('screen-login');
@@ -533,12 +543,14 @@ async function logout() {
 async function loadUserState() {
   document.getElementById('wallet-email-display').textContent = currentUser.email;
 
-  const eventSnap = await db.ref('config/eventName').once('value');
+  const [eventSnap, pendingReqIdSnap] = await Promise.all([
+    db.ref('config/eventName').once('value'),
+    db.ref('users/' + currentUser.uid + '/pendingRequestId').once('value')
+  ]);
   const eventName = eventSnap.val() || 'Bar Pi';
   document.getElementById('home-event-name').textContent = eventName;
 
   // 1. Demande de carte cash en attente ?
-  const pendingReqIdSnap = await db.ref('users/' + currentUser.uid + '/pendingRequestId').once('value');
   const pendingReqId = pendingReqIdSnap.val();
   if (pendingReqId) {
     const reqSnap = await db.ref('cardRequests/' + pendingReqId).once('value');
@@ -621,9 +633,7 @@ function choosePayment(method) {
 async function submitCashRequest() {
   if (!selectedAmount || !currentUser) return;
   try {
-    // Récupère le profil pour pré-remplir
-    const profSnap = await db.ref('users/' + currentUser.uid + '/profile').once('value');
-    const prof = profSnap.val() || {};
+    const prof = await getProfile();
     const displayName = (prof.firstname || prof.lastname)
       ? ((prof.firstname || '') + ' ' + (prof.lastname || '')).trim()
       : (currentUser.displayName || (currentUser.email || '').split('@')[0]);
@@ -652,6 +662,7 @@ async function submitCashRequest() {
 }
 
 let pendingRequestUnsub = null;
+let walletCardListeners = [];
 
 function showPendingScreen(requestId, amount) {
   document.getElementById('pending-amount').textContent = amount + ' €';
@@ -761,9 +772,7 @@ async function simulatePaymentSuccess() {
 
 async function onPaymentSuccess(checkoutId) {
   showToast('Paiement validé ✓');
-  // Récupère le profil (prénom/nom) pour l'associer à la carte
-  const profSnap = await db.ref('users/' + currentUser.uid + '/profile').once('value');
-  const prof = profSnap.val() || {};
+  const prof = await getProfile();
   const card = {
     uid: currentUser.uid,
     email: currentUser.email,
@@ -855,6 +864,10 @@ function showCardEmptyScreen(card) {
 // WALLET
 // ════════════════════════════════════════
 async function renderWallet() {
+  // Nettoie les anciens listeners avant de recréer
+  walletCardListeners.forEach(({ ref, handler }) => ref.off('value', handler));
+  walletCardListeners = [];
+
   const el = document.getElementById('wallet-list');
   const snap = await db.ref('cards').orderByChild('uid').equalTo(currentUser.uid).once('value');
   const cards = snap.val();
@@ -896,19 +909,22 @@ async function renderWallet() {
       </div>`;
   }).join('');
 
-  // Écoute live pour chaque carte
+  // Écoute live pour chaque carte (avec nettoyage propre)
   Object.keys(cards).forEach(id => {
-    db.ref('cards/' + id).on('value', snap => {
+    const ref = db.ref('cards/' + id);
+    const handler = snap => {
       if (!snap.val()) {
-        // Carte supprimée → on rafraîchit la liste
-        db.ref('cards/' + id).off();
+        ref.off('value', handler);
+        walletCardListeners = walletCardListeners.filter(l => l.handler !== handler);
         renderWallet();
         return;
       }
       const card = snap.val();
       const el2 = document.getElementById('conso-' + id);
       if (el2) el2.innerHTML = renderConsoList(card);
-    });
+    };
+    ref.on('value', handler);
+    walletCardListeners.push({ ref, handler });
   });
 }
 

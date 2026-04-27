@@ -48,9 +48,10 @@ Dans Firebase Console → Realtime Database → **Rules**, colle :
 ```json
 {
   "rules": {
-    "cards":  { ".read": true, ".write": true },
-    "users":  { ".read": true, ".write": true },
-    "config": { ".read": true, ".write": true }
+    "cards":        { ".read": true, ".write": true },
+    "users":        { ".read": true, ".write": true },
+    "config":       { ".read": true, ".write": true },
+    "cardRequests": { ".read": true, ".write": true }
   }
 }
 ```

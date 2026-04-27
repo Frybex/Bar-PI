@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0f0f13">
 <title>Bar Pi — Bar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
 :root{--bg:#0f0f13;--bg2:#18181f;--bg3:#21212b;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--text:#f0f0f0;--muted:#888;--accent:#7c6ff7;--accent2:#5a52d5;--success:#22c97a;--danger:#e85555;--warning:#f0a030;--r:12px;--r-sm:8px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
@@ -316,10 +318,13 @@ const DRINKS = [
 let barUnlocked = false;
 let adminUnlocked = false;
 let currentCardId = null;
+let currentCardData = null;
 let cart = {};
 let pendingUncheck = null;
 let changePwTarget = null;
 let liveUnsub = null;
+let allCards = {};
+let cardsListener = null;
 
 // ════════════════════════════════════════
 // LOCK / UNLOCK
@@ -331,7 +336,7 @@ async function unlockBar() {
   barUnlocked = true;
   document.getElementById('access-error').style.display = 'none';
   showScreen('screen-main');
-  renderBarList();
+  startCardsListener();
   watchPendingRequests();
   document.getElementById('bar-mode-label').textContent = 'Mode bar';
 }
@@ -375,9 +380,23 @@ async function cleanupOldSoldeeCards() {
   await Promise.all(tasks);
 }
 
+function startCardsListener() {
+  if (cardsListener) return;
+  cardsListener = db.ref('cards');
+  cardsListener.on('value', snap => {
+    allCards = snap.val() || {};
+    if (!barUnlocked) return;
+    if (document.getElementById('tab-cartes').style.display !== 'none') renderBarList();
+    else if (document.getElementById('tab-soldees').style.display !== 'none') renderSoldeesList();
+  });
+}
+
 function lockBar() {
   barUnlocked = false;
   adminUnlocked = false;
+  if (cardsListener) { cardsListener.off(); cardsListener = null; }
+  allCards = {};
+  currentCardData = null;
   document.getElementById('access-code').value = '';
   document.getElementById('admin-lock-view').style.display = 'block';
   document.getElementById('admin-main-view').style.display = 'none';
@@ -491,10 +510,9 @@ async function stopScanner() {
 // ════════════════════════════════════════
 // BAR LIST
 // ════════════════════════════════════════
-async function renderBarList() {
+function renderBarList() {
   const q = (document.getElementById('bar-search').value || '').toLowerCase();
-  const snap = await db.ref('cards').once('value');
-  const cards = snap.val() || {};
+  const cards = allCards;
   const el = document.getElementById('bar-list');
 
   const filtered = Object.entries(cards).filter(([id, c]) => {
@@ -544,9 +562,8 @@ async function renderBarList() {
 // ════════════════════════════════════════
 // SOLDÉES (cartes vides) — rangées dans un onglet
 // ════════════════════════════════════════
-async function renderSoldeesList() {
-  const snap = await db.ref('cards').once('value');
-  const cards = snap.val() || {};
+function renderSoldeesList() {
+  const cards = allCards;
   const el = document.getElementById('soldees-list');
 
   const filtered = Object.entries(cards).filter(([id, c]) => {
@@ -701,12 +718,14 @@ async function rejectRequest(reqId) {
 // ════════════════════════════════════════
 async function openOrder(id) {
   currentCardId = id;
+  currentCardData = null;
   cart = {};
   if (liveUnsub) liveUnsub();
 
   const card = await db.ref('cards/' + id).once('value').then(s => s.val());
   if (!card) { showToast('Carte introuvable'); return; }
 
+  currentCardData = card;
   const name = cardDisplayName(card) || id.slice(-6);
   document.getElementById('order-title').textContent = name;
   document.getElementById('order-sub').textContent = id.slice(-8) + ' · ' + card.amount + ' €';
@@ -715,7 +734,12 @@ async function openOrder(id) {
   showScreen('screen-order');
 
   liveUnsub = () => db.ref('cards/' + id).off();
-  db.ref('cards/' + id).on('value', snap => { if (snap.val()) renderOrderView(snap.val()); });
+  db.ref('cards/' + id).on('value', snap => {
+    if (snap.val()) {
+      currentCardData = snap.val();
+      renderOrderView(currentCardData);
+    }
+  });
 }
 
 function renderOrderView(card) {
@@ -756,22 +780,20 @@ function renderOrderView(card) {
   renderHistory(card);
 }
 
-async function addToCart(drinkId) {
-  const card = await db.ref('cards/' + currentCardId).once('value').then(s => s.val());
-  if (!card) return;
+function addToCart(drinkId) {
+  if (!currentCardData) return;
   const drink = DRINKS.find(x => x.id === drinkId);
   if (!drink) return;
-  const spent = calcSpent(card);
+  const spent = calcSpent(currentCardData);
   const cartTotal = Object.entries(cart).reduce((s,[did,qty]) => {
     const d = DRINKS.find(x => x.id === did); return s + (d ? d.price * qty : 0);
   }, 0);
-  // Double check côté JS : on n'autorise pas l'ajout si ça dépasse
-  if (spent + cartTotal + drink.price > card.amount) {
+  if (spent + cartTotal + drink.price > currentCardData.amount) {
     showToast('Solde insuffisant');
     return;
   }
   cart[drinkId] = (cart[drinkId] || 0) + 1;
-  renderOrderView(card);
+  renderOrderView(currentCardData);
 }
 
 function renderCart() {
@@ -801,13 +823,14 @@ function renderCart() {
 
 function clearCart() {
   cart = {};
-  db.ref('cards/' + currentCardId).once('value').then(s => { if(s.val()) renderOrderView(s.val()); });
+  if (currentCardData) renderOrderView(currentCardData);
 }
 
 async function validateCart() {
   const entries = Object.entries(cart).filter(([,q]) => q > 0);
   if (!entries.length) return;
-  const card = await db.ref('cards/' + currentCardId).once('value').then(s => s.val());
+  const card = currentCardData;
+  if (!card) return;
   const spent = calcSpent(card);
   const cartTotal = entries.reduce((s,[did,qty]) => { const d = DRINKS.find(x=>x.id===did); return s+d.price*qty; }, 0);
   if (spent + cartTotal > card.amount) { showToast('Solde insuffisant'); return; }
@@ -818,14 +841,11 @@ async function validateCart() {
     items, total: cartTotal, ts: Date.now(),
     time: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})
   });
-  // Vidage explicite du panier — même si le listener n'a pas encore re-rendu
   cart = {};
   renderCart();
-  const updatedCard = await db.ref('cards/' + currentCardId).once('value').then(s => s.val());
-  if (updatedCard) renderOrderView(updatedCard);
+  // Le listener live appelle renderOrderView avec les données fraîches
 
   const newSpent = spent + cartTotal;
-  // Carte entièrement consommée → on la marque (sera purgée après 24h par le cleanup)
   if (newSpent >= card.amount) {
     try {
       // Stoppe le listener live (la carte va disparaître de la liste bar)
@@ -841,6 +861,7 @@ async function validateCart() {
       await db.ref('cards/' + currentCardId + '/soldeeAt').set(Date.now());
       showToast('Carte soldée ✓');
       currentCardId = null;
+      currentCardData = null;
       setTimeout(() => showScreen('screen-main'), 1000);
     } catch(e) {
       console.error('Marquage soldée:', e);
@@ -925,8 +946,8 @@ async function confirmUncheck() {
 // ════════════════════════════════════════
 // ADMIN
 // ════════════════════════════════════════
-async function renderAdminStats() {
-  const cards = Object.values((await db.ref('cards').once('value')).val() || {});
+function renderAdminStats() {
+  const cards = Object.values(allCards);
   const totalCash = cards.reduce((s,c) => s + c.amount, 0);
   const totalSpent = cards.reduce((s,c) => s + calcSpent(c), 0);
   const breakdown = {5:0,10:0,15:0,20:0};
