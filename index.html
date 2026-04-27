@@ -165,7 +165,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="amount-btn" onclick="selectAmount(15)" id="a15">15 €</button>
         <button class="amount-btn" onclick="selectAmount(20)" id="a20">20 €</button>
       </div>
-      <button class="btn btn-primary" id="buy-btn" onclick="startPurchase()" disabled>Payer avec Bancontact / Wero →</button>
+      <button class="btn btn-primary" id="buy-btn" onclick="startPurchase()" disabled>Payer →</button>
       <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Paiement sécurisé via SumUp</div>
     </div>
     <div class="card" style="font-size:13px;color:var(--muted);line-height:1.7">
@@ -196,8 +196,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <!-- Choix mode de paiement -->
     <div id="payment-method-choice" class="card">
       <div class="card-label">Mode de paiement</div>
-      <button class="btn btn-primary" style="margin-bottom:10px" onclick="choosePayment('online')">💳 Carte bancaire / Bancontact</button>
-      <button class="btn btn-outline" onclick="choosePayment('cash')">💵 Payer en cash au bar</button>
+      <button class="btn btn-primary" style="margin-bottom:10px" onclick="choosePayment('online')">💳 Payer par carte bancaire</button>
+      <button class="btn btn-outline" onclick="choosePayment('cash')">💵 Payer en cash à la caisse</button>
       <div style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5">
         Carte : paiement sécurisé immédiat via SumUp.<br>
         Cash : ta demande sera validée par l'équipe du bar.
