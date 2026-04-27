@@ -122,12 +122,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
   <!-- TAB: SCAN -->
   <div class="content" id="tab-scan" style="display:none">
-    <div class="card" style="text-align:center;padding:32px">
-      <div style="font-size:36px;margin-bottom:12px">📷</div>
-      <div style="font-size:15px;font-weight:600;margin-bottom:8px">Chercher une carte</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Entre l'ID affiché sous le QR code du client.</div>
+    <div class="card" style="padding:16px">
+      <div class="card-label">Scanner un QR code</div>
+      <div id="reader" style="width:100%;border-radius:var(--r-sm);overflow:hidden;background:#000;min-height:240px;position:relative"></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-primary" id="scan-start-btn" onclick="startScanner()">📷 Démarrer la caméra</button>
+        <button class="btn btn-outline" id="scan-stop-btn" onclick="stopScanner()" style="display:none">Arrêter</button>
+      </div>
+      <div id="scan-error" style="font-size:12px;color:var(--danger);margin-top:10px;display:none;text-align:center;line-height:1.5"></div>
+      <div id="scan-hint" style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center;display:none">Pointe la caméra vers le QR code du client</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Saisie manuelle (fallback)</div>
       <input class="inp" id="scan-input" placeholder="ID de carte (ex: -OAbc123...)" />
-      <button class="btn btn-primary" onclick="scanLookup()">Ouvrir la carte →</button>
+      <button class="btn btn-outline" onclick="scanLookup()">Ouvrir la carte →</button>
     </div>
   </div>
 
@@ -229,6 +237,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
 <script>
 // ════════════════════════════════════════
@@ -282,6 +291,7 @@ function lockBar() {
   document.getElementById('access-code').value = '';
   document.getElementById('admin-lock-view').style.display = 'block';
   document.getElementById('admin-main-view').style.display = 'none';
+  stopScanner();
   showScreen('screen-lock');
 }
 
@@ -306,6 +316,84 @@ function mainTab(t, btn) {
   });
   if (t === 'cartes') renderBarList();
   if (t === 'admin' && adminUnlocked) renderAdminStats();
+  if (t !== 'scan') stopScanner();
+}
+
+// ════════════════════════════════════════
+// QR SCANNER (caméra)
+// ════════════════════════════════════════
+let qrScanner = null;
+
+async function startScanner() {
+  const errEl  = document.getElementById('scan-error');
+  const hintEl = document.getElementById('scan-hint');
+  errEl.style.display = 'none';
+  hintEl.style.display = 'none';
+
+  if (typeof Html5Qrcode === 'undefined') {
+    errEl.textContent = 'Bibliothèque QR non chargée. Vérifie ta connexion internet et rafraîchis la page.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    errEl.textContent = 'Ton navigateur ne supporte pas l\'accès caméra. Utilise Chrome ou Safari à jour.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    errEl.textContent = 'L\'accès caméra requiert HTTPS. Ouvre la version en ligne (https://...).';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    qrScanner = new Html5Qrcode('reader');
+    await qrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 240, height: 240 } },
+      (decodedText) => {
+        // QR détecté : on stoppe la caméra et on ouvre la carte
+        const id = (decodedText || '').trim();
+        if (!id) return;
+        // Petit feedback haptique si dispo
+        if (navigator.vibrate) navigator.vibrate(80);
+        stopScanner().then(() => openOrder(id));
+      },
+      () => { /* erreurs par-frame ignorées */ }
+    );
+    document.getElementById('scan-start-btn').style.display = 'none';
+    document.getElementById('scan-stop-btn').style.display = 'block';
+    hintEl.style.display = 'block';
+  } catch(e) {
+    let msg = 'Caméra inaccessible';
+    if (e && (e.name === 'NotAllowedError' || /permission/i.test(e.message || ''))) {
+      msg = 'Permission caméra refusée. Autorise la caméra dans les réglages du navigateur.';
+    } else if (e && e.name === 'NotFoundError') {
+      msg = 'Aucune caméra détectée sur cet appareil.';
+    } else if (e && e.message) {
+      msg = 'Caméra inaccessible : ' + e.message;
+    }
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+    qrScanner = null;
+  }
+}
+
+async function stopScanner() {
+  if (!qrScanner) return;
+  try {
+    if (qrScanner.isScanning) await qrScanner.stop();
+    qrScanner.clear();
+  } catch(_) { /* ignore */ }
+  qrScanner = null;
+  const startBtn = document.getElementById('scan-start-btn');
+  const stopBtn  = document.getElementById('scan-stop-btn');
+  const hintEl   = document.getElementById('scan-hint');
+  if (startBtn) startBtn.style.display = 'block';
+  if (stopBtn)  stopBtn.style.display  = 'none';
+  if (hintEl)   hintEl.style.display   = 'none';
 }
 
 // ════════════════════════════════════════
