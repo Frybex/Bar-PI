@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bar Scout">
+<title>Bar Scout</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#0f0f13;--bg2:#18181f;--bg3:#21212b;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--text:#f0f0f0;--muted:#888;--accent:#7c6ff7;--accent2:#5a52d5;--success:#22c97a;--danger:#e85555;--warning:#f0a030;--r:12px;--r-sm:8px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:20}
+.header h1{font-size:18px;font-weight:600;letter-spacing:-.3px}
+.header .sub{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
+.content{flex:1;overflow-y:auto;padding:16px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.card-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+.inp{width:100%;padding:11px 14px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--bg3);color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;margin-bottom:12px;outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--accent)}
+.inp::placeholder{color:var(--muted)}
+.btn{width:100%;padding:13px;border-radius:var(--r-sm);font-size:15px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:.15s}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover:not(:disabled){background:var(--accent2)}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text)}
+.btn-success{background:var(--success);color:#fff}
+.btn-sm{padding:8px 14px;font-size:13px;width:auto}
+.amount-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.amount-btn{padding:18px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--bg3);color:var(--text);font-size:20px;font-weight:600;cursor:pointer;transition:.15s;font-family:'DM Mono',monospace}
+.amount-btn:active{transform:scale(.96)}
+.amount-btn.sel{border-color:var(--accent);background:rgba(124,111,247,.15);color:var(--accent)}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-box{background:var(--bg3);border-radius:var(--r-sm);padding:14px 12px}
+.stat-val{font-size:24px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text)}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px}
+.qr-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;gap:20px}
+.qr-box{background:#fff;border-radius:var(--r);padding:20px;display:flex;align-items:center;justify-content:center}
+.qr-info{text-align:center}
+.qr-info .big-name{font-size:26px;font-weight:700;margin-bottom:4px}
+.qr-info .big-amount{font-size:44px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)}
+.qr-info .qr-id{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:6px}
+.badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'DM Mono',monospace}
+.badge-5{background:rgba(34,201,122,.15);color:var(--success)}
+.badge-10{background:rgba(124,111,247,.15);color:var(--accent)}
+.badge-15{background:rgba(240,160,48,.15);color:var(--warning)}
+.badge-20{background:rgba(232,85,85,.15);color:var(--danger)}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:.25s;z-index:300;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.center-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;gap:16px;text-align:center}
+.logo{font-size:52px;margin-bottom:8px}
+.big-title{font-size:28px;font-weight:700;letter-spacing:-.5px}
+.sub-text{font-size:14px;color:var(--muted);max-width:280px;line-height:1.6}
+.divider{width:100%;border:none;border-top:1px solid var(--border);margin:4px 0}
+.spinner{width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.info-box{background:rgba(124,111,247,.1);border:1px solid rgba(124,111,247,.3);border-radius:var(--r-sm);padding:12px 14px;font-size:13px;color:var(--accent);line-height:1.6;margin-bottom:14px}
+.success-box{background:rgba(34,201,122,.1);border:1px solid rgba(34,201,122,.3);border-radius:var(--r-sm);padding:12px 14px;font-size:13px;color:var(--success);line-height:1.6;margin-bottom:14px}
+.nav{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:19}
+.nav button{flex:1;padding:12px 4px;font-size:13px;font-weight:500;color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s}
+.nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.empty{text-align:center;padding:48px 24px;color:var(--muted);font-size:14px}
+.pwa-banner{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.pwa-banner-icon{font-size:28px;flex-shrink:0}
+.pwa-banner-text{font-size:13px;color:var(--muted);line-height:1.5;flex:1}
+.pwa-banner-text strong{color:var(--text);display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<!-- ══ SCREEN: SPLASH ══ -->
+<div id="screen-splash" class="screen active">
+  <div class="center-screen">
+    <div class="logo">🍺</div>
+    <div class="spinner"></div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: LOGIN ══ -->
+<div id="screen-login" class="screen">
+  <div class="center-screen">
+    <div class="logo">🍺</div>
+    <div class="big-title">Bar Scout</div>
+    <div class="sub-text">Crée ta carte boisson et suis ton solde en direct.</div>
+    <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:0">
+      <div id="login-step1">
+        <input class="inp" type="email" id="email-input" placeholder="ton@email.com" />
+        <button class="btn btn-primary" id="send-link-btn" onclick="sendMagicLink()">Recevoir mon lien de connexion →</button>
+        <div id="login-error" style="font-size:12px;color:var(--danger);margin-top:8px;display:none"></div>
+      </div>
+      <div id="login-step2" style="display:none">
+        <div class="success-box">✉️ Lien envoyé ! Vérifie ta boîte mail et clique le lien pour te connecter.</div>
+        <button class="btn btn-outline" onclick="resetLogin()">Changer d'email</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: HOME (connecté, pas encore de carte) ══ -->
+<div id="screen-home" class="screen">
+  <div class="header">
+    <div><h1>Bar Scout 🍺</h1><div class="sub" id="home-event-name">Bal des Scouts</div></div>
+    <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="logout()">Déconnexion</button>
+  </div>
+  <div class="content">
+    <div id="pwa-install-banner" style="display:none">
+      <div class="pwa-banner">
+        <div class="pwa-banner-icon">📲</div>
+        <div class="pwa-banner-text">
+          <strong>Installer l'app</strong>
+          Sur iOS : Partager → Sur l'écran d'accueil<br>Sur Android : le bouton apparaît dans Chrome
+        </div>
+        <button onclick="triggerInstall()" style="background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Installer</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Acheter une carte boisson</div>
+      <div class="amount-grid">
+        <button class="amount-btn" onclick="selectAmount(5)"  id="a5">5 €</button>
+        <button class="amount-btn" onclick="selectAmount(10)" id="a10">10 €</button>
+        <button class="amount-btn" onclick="selectAmount(15)" id="a15">15 €</button>
+        <button class="amount-btn" onclick="selectAmount(20)" id="a20">20 €</button>
+      </div>
+      <button class="btn btn-primary" id="buy-btn" onclick="startPurchase()" disabled>Payer avec Bancontact / Wero →</button>
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Paiement sécurisé via SumUp</div>
+    </div>
+    <div class="card" style="font-size:13px;color:var(--muted);line-height:1.7">
+      <div class="card-label">Comment ça marche</div>
+      1. Choisis ton montant et paie en ligne<br>
+      2. Reçois ton QR code instantanément<br>
+      3. Présente-le au bar pour tes conso<br>
+      4. Suis ton solde ici en temps réel
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: PAYMENT ══ -->
+<div id="screen-payment" class="screen">
+  <div class="header">
+    <div><h1>Paiement</h1></div>
+    <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="cancelPayment()">Annuler</button>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="card-label">Récapitulatif</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:14px;color:var(--muted)">Carte boisson</span>
+        <span id="payment-amount-display" style="font-size:20px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent)">10 €</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5">
+        Paiement sécurisé par SumUp. Accepte Bancontact et Wero.
+      </div>
+    </div>
+    <div id="sumup-container" style="min-height:200px;display:flex;align-items:center;justify-content:center">
+      <div class="spinner"></div>
+    </div>
+    <div id="payment-fallback" style="display:none">
+      <div class="info-box">⚠️ Le module de paiement SumUp n'est pas encore configuré. Clique ci-dessous pour simuler un paiement (mode test).</div>
+      <button class="btn btn-success" onclick="simulatePaymentSuccess()">✓ Simuler paiement réussi (test)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: QR CODE ══ -->
+<div id="screen-qr" class="screen">
+  <div class="header">
+    <div><h1>Ma carte 🎉</h1><div class="sub">Présente ce QR au bar</div></div>
+    <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="showScreen('screen-wallet')">Solde →</button>
+  </div>
+  <div class="qr-wrap">
+    <div class="qr-info">
+      <div class="big-name" id="qr-name"></div>
+      <div class="big-amount" id="qr-amount"></div>
+      <div class="qr-id" id="qr-id-display"></div>
+    </div>
+    <div class="qr-box" id="qr-code-el"></div>
+    <div style="font-size:13px;color:var(--muted);text-align:center;max-width:260px;line-height:1.6">
+      Montre ce QR code au bar. Le barman cochera tes consommations dessus.
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: WALLET (liste des cartes + solde) ══ -->
+<div id="screen-wallet" class="screen">
+  <div class="header">
+    <div><h1>Mes cartes</h1><div class="sub" id="wallet-email-display"></div></div>
+    <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="logout()">Déco</button>
+  </div>
+  <div class="content">
+    <div id="wallet-list"></div>
+    <button class="btn btn-outline" onclick="showScreen('screen-home')" style="margin-top:4px">+ Acheter une nouvelle carte</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
+
+<script>
+// ════════════════════════════════════════
+// CONFIGURATION — remplace par tes valeurs Firebase
+// ════════════════════════════════════════
+const firebaseConfig = {
+    apiKey: "AIzaSyAe1CHIbjM6KdRDnrlIUqIrIKthmWabrIQ",
+    authDomain: "bal-pi.firebaseapp.com",
+    projectId: "bal-pi",
+    storageBucket: "bal-pi.firebasestorage.app",
+    messagingSenderId: "13033772229",
+    appId: "1:13033772229:web:96795b43ba8b76ae908cac",
+    measurementId: "G-T9TNJ5W97R"
+  };
+
+// SumUp — remplace par ton Merchant Code et ta clé API
+const SUMUP_MERCHANT_CODE = "YOUR_MERCHANT_CODE";
+const SUMUP_API_KEY        = "YOUR_SUMUP_API_KEY"; // Client Credentials
+
+// URL de cette page (pour le lien magique)
+const APP_URL = window.location.origin + window.location.pathname;
+
+// ════════════════════════════════════════
+// INIT FIREBASE
+// ════════════════════════════════════════
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const db   = firebase.database();
+
+const DRINKS = [
+  {id:'soda',label:'Soda',price:1},{id:'eau',label:'Eau',price:0.5},
+  {id:'biere',label:'Bière',price:2},{id:'vin',label:'Vin',price:2},
+  {id:'jus',label:'Jus',price:1},{id:'cocktail',label:'Cocktail',price:3},
+  {id:'cafe',label:'Café',price:1},{id:'shot',label:'Shot',price:2},
+];
+
+let currentUser = null;
+let selectedAmount = null;
+let deferredInstallPrompt = null;
+
+// ════════════════════════════════════════
+// PWA INSTALL
+// ════════════════════════════════════════
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.getElementById('pwa-install-banner').style.display = 'block';
+});
+
+function triggerInstall() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(() => {
+      deferredInstallPrompt = null;
+      document.getElementById('pwa-install-banner').style.display = 'none';
+    });
+  }
+}
+
+// ════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    currentUser = user;
+    await loadUserState();
+  } else {
+    // Vérifie si on revient d'un lien magique
+    if (firebase.auth.isSignInWithEmailLink(auth, window.location.href)) {
+      let email = window.localStorage.getItem('emailForSignIn');
+      if (!email) email = window.prompt('Confirme ton email pour te connecter :');
+      try {
+        await auth.signInWithEmailLink(email, window.location.href);
+        window.localStorage.removeItem('emailForSignIn');
+        window.history.replaceState({}, document.title, APP_URL);
+      } catch(e) {
+        showToast('Lien invalide ou expiré');
+        showScreen('screen-login');
+      }
+    } else {
+      showScreen('screen-login');
+    }
+  }
+});
+
+async function sendMagicLink() {
+  const email = document.getElementById('email-input').value.trim();
+  const errEl = document.getElementById('login-error');
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Entre un email valide.';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  document.getElementById('send-link-btn').disabled = true;
+
+  try {
+    await auth.sendSignInLinkToEmail(email, {
+      url: APP_URL,
+      handleCodeInApp: true
+    });
+    window.localStorage.setItem('emailForSignIn', email);
+    document.getElementById('login-step1').style.display = 'none';
+    document.getElementById('login-step2').style.display = 'block';
+  } catch(e) {
+    errEl.textContent = 'Erreur : ' + e.message;
+    errEl.style.display = 'block';
+    document.getElementById('send-link-btn').disabled = false;
+  }
+}
+
+function resetLogin() {
+  document.getElementById('login-step1').style.display = 'block';
+  document.getElementById('login-step2').style.display = 'none';
+  document.getElementById('send-link-btn').disabled = false;
+}
+
+async function logout() {
+  await auth.signOut();
+  currentUser = null;
+  showScreen('screen-login');
+}
+
+// ════════════════════════════════════════
+// USER STATE
+// ════════════════════════════════════════
+async function loadUserState() {
+  const snap = await db.ref('users/' + currentUser.uid + '/activeCardId').once('value');
+  const activeCardId = snap.val();
+
+  document.getElementById('wallet-email-display').textContent = currentUser.email;
+
+  const eventSnap = await db.ref('config/eventName').once('value');
+  const eventName = eventSnap.val() || 'Bal des Scouts';
+  document.getElementById('home-event-name').textContent = eventName;
+
+  if (activeCardId) {
+    const cardSnap = await db.ref('cards/' + activeCardId).once('value');
+    if (cardSnap.val()) {
+      showQR(activeCardId, cardSnap.val());
+      return;
+    }
+  }
+
+  await renderWallet();
+  const cardsSnap = await db.ref('cards').orderByChild('uid').equalTo(currentUser.uid).once('value');
+  const cards = cardsSnap.val();
+  if (cards && Object.keys(cards).length > 0) {
+    showScreen('screen-wallet');
+  } else {
+    showScreen('screen-home');
+  }
+}
+
+// ════════════════════════════════════════
+// ACHETER
+// ════════════════════════════════════════
+function selectAmount(a) {
+  selectedAmount = a;
+  [5,10,15,20].forEach(v => document.getElementById('a'+v).classList.toggle('sel', v===a));
+  document.getElementById('buy-btn').disabled = false;
+}
+
+function startPurchase() {
+  if (!selectedAmount) return;
+  document.getElementById('payment-amount-display').textContent = selectedAmount + ' €';
+  showScreen('screen-payment');
+  loadSumUp();
+}
+
+function cancelPayment() {
+  showScreen('screen-home');
+}
+
+function loadSumUp() {
+  const container = document.getElementById('sumup-container');
+  const fallback  = document.getElementById('payment-fallback');
+
+  if (SUMUP_API_KEY === 'YOUR_SUMUP_API_KEY') {
+    container.style.display = 'none';
+    fallback.style.display = 'block';
+    return;
+  }
+
+  // Intégration SumUp Checkout
+  // Doc : https://developer.sumup.com/online-payments/checkout/
+  container.innerHTML = '<div id="sumup-card"></div>';
+
+  const script = document.createElement('script');
+  script.src = 'https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
+  script.onload = async () => {
+    try {
+      // 1. Créer un checkout côté serveur via l'API SumUp
+      // En prod : appelle ton backend ou Firebase Function
+      // Ici : appel direct (déconseillé en prod mais fonctionnel pour les tests)
+      const checkoutRes = await fetch('https://api.sumup.com/v0.1/checkouts', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + SUMUP_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          checkout_reference: 'CARD_' + Date.now(),
+          amount: selectedAmount,
+          currency: 'EUR',
+          merchant_code: SUMUP_MERCHANT_CODE,
+          description: 'Carte boisson Bar Scout ' + selectedAmount + '€'
+        })
+      });
+      const checkout = await checkoutRes.json();
+
+      SumUpCard.mount({
+        id: checkout.id,
+        onLoad: () => { container.querySelector('.spinner') && (container.innerHTML = '<div id="sumup-card"></div>'); },
+        onResponse: (type, body) => {
+          if (type === 'success') onPaymentSuccess(checkout.id);
+          else if (type === 'error') showToast('Paiement refusé — réessaie');
+        }
+      });
+    } catch(e) {
+      container.style.display = 'none';
+      fallback.style.display = 'block';
+    }
+  };
+  document.head.appendChild(script);
+}
+
+async function simulatePaymentSuccess() {
+  await onPaymentSuccess('TEST_' + Date.now());
+}
+
+async function onPaymentSuccess(checkoutId) {
+  showToast('Paiement validé ✓');
+  const card = {
+    uid: currentUser.uid,
+    email: currentUser.email,
+    amount: selectedAmount,
+    transactions: {},
+    checkoutId,
+    createdAt: new Date().toISOString(),
+    createdTime: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'}),
+  };
+  const ref  = db.ref('cards').push();
+  await ref.set(card);
+  const cardId = ref.key;
+  await db.ref('users/' + currentUser.uid + '/activeCardId').set(cardId);
+  selectedAmount = null;
+  [5,10,15,20].forEach(v => document.getElementById('a'+v).classList.remove('sel'));
+  document.getElementById('buy-btn').disabled = true;
+  showQR(cardId, card);
+}
+
+// ════════════════════════════════════════
+// QR CODE
+// ════════════════════════════════════════
+function showQR(cardId, card) {
+  document.getElementById('qr-name').textContent = card.email ? card.email.split('@')[0] : '';
+  document.getElementById('qr-amount').textContent = card.amount + ' €';
+  document.getElementById('qr-id-display').textContent = cardId;
+
+  const el = document.getElementById('qr-code-el');
+  el.innerHTML = '';
+  new QRCode(el, {
+    text: cardId, width: 200, height: 200,
+    colorDark: '#000', colorLight: '#fff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  showScreen('screen-qr');
+
+  // Écoute les changements en live
+  db.ref('cards/' + cardId).on('value', snap => {
+    if (snap.val()) updateQRInfo(cardId, snap.val());
+  });
+}
+
+function updateQRInfo(cardId, card) {
+  const spent = calcSpent(card);
+  const left  = Math.max(0, card.amount - spent);
+  // Met à jour silencieusement, l'utilisateur voit son solde dans le wallet
+}
+
+// ════════════════════════════════════════
+// WALLET
+// ════════════════════════════════════════
+async function renderWallet() {
+  const el = document.getElementById('wallet-list');
+  const snap = await db.ref('cards').orderByChild('uid').equalTo(currentUser.uid).once('value');
+  const cards = snap.val();
+
+  if (!cards) {
+    el.innerHTML = '<div class="empty">Aucune carte pour l\'instant.<br>Achète ta première carte !</div>';
+    return;
+  }
+
+  el.innerHTML = Object.entries(cards).reverse().map(([id, card]) => {
+    const spent = calcSpent(card);
+    const left  = Math.max(0, card.amount - spent);
+    const pct   = Math.min(100, Math.round(spent / card.amount * 100));
+    const full  = spent >= card.amount;
+    const color = full ? 'var(--danger)' : 'var(--accent)';
+    return `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer" onclick="showQRForCard('${id}')">
+          <div>
+            <div style="font-size:15px;font-weight:600">${card.email ? card.email.split('@')[0] : 'Ma carte'}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${card.createdTime} · ${id.slice(-6)}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="badge badge-${card.amount}">${card.amount} €</span>
+            <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px">${left.toFixed(2)} € restant</div>
+          </div>
+        </div>
+        <div style="padding:0 16px 14px;display:flex;align-items:center;gap:10px">
+          <div style="flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${color};border-radius:2px;transition:width .4s"></div>
+          </div>
+          <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap">${pct}%${full?' SOLDÉE':''}</span>
+        </div>
+        <div style="padding:0 16px 14px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Consommations :</div>
+          <div id="conso-${id}">${renderConsoList(card)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Écoute live pour chaque carte
+  Object.keys(cards).forEach(id => {
+    db.ref('cards/' + id).on('value', snap => {
+      if (!snap.val()) return;
+      const card = snap.val();
+      const spent = calcSpent(card);
+      const left  = Math.max(0, card.amount - spent);
+      const el2 = document.getElementById('conso-' + id);
+      if (el2) el2.innerHTML = renderConsoList(card);
+    });
+  });
+}
+
+function renderConsoList(card) {
+  const txns = card.transactions || {};
+  const items = {};
+  Object.values(txns).forEach(tx => {
+    Object.entries(tx.items || {}).forEach(([did, qty]) => {
+      items[did] = (items[did] || 0) + qty;
+    });
+  });
+  const entries = Object.entries(items);
+  if (!entries.length) return '<span style="font-size:12px;color:var(--muted)">Aucune conso pour l\'instant</span>';
+  return entries.map(([did, qty]) => {
+    const d = DRINKS.find(x => x.id === did);
+    return d ? `<span style="display:inline-block;background:var(--bg3);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted);margin:2px">${qty}× ${d.label}</span>` : '';
+  }).join('');
+}
+
+async function showQRForCard(cardId) {
+  const snap = await db.ref('cards/' + cardId).once('value');
+  if (snap.val()) showQR(cardId, snap.val());
+}
+
+// ════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════
+function calcSpent(card) {
+  return Object.values(card.transactions || {}).reduce((s, tx) => s + (tx.total || 0), 0);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'screen-wallet') renderWallet();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0f13">
+<title>Bar Scout — Bar</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#0f0f13;--bg2:#18181f;--bg3:#21212b;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--text:#f0f0f0;--muted:#888;--accent:#7c6ff7;--accent2:#5a52d5;--success:#22c97a;--danger:#e85555;--warning:#f0a030;--r:12px;--r-sm:8px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:20}
+.header h1{font-size:18px;font-weight:600;letter-spacing:-.3px}
+.header .sub{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
+.nav{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:19}
+.nav button{flex:1;padding:12px 4px;font-size:13px;font-weight:500;color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s}
+.nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.content{flex:1;overflow-y:auto;padding:16px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.card-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+.inp{width:100%;padding:11px 14px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--bg3);color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;margin-bottom:12px;outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--accent)}
+.inp::placeholder{color:var(--muted)}
+.btn{width:100%;padding:13px;border-radius:var(--r-sm);font-size:15px;font-weight:600;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:.15s}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover:not(:disabled){background:var(--accent2)}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text)}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:8px 14px;font-size:13px;width:auto}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-box{background:var(--bg3);border-radius:var(--r-sm);padding:14px 12px}
+.stat-val{font-size:24px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text)}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px}
+.badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'DM Mono',monospace}
+.badge-5{background:rgba(34,201,122,.15);color:var(--success)}
+.badge-10{background:rgba(124,111,247,.15);color:var(--accent)}
+.badge-15{background:rgba(240,160,48,.15);color:var(--warning)}
+.badge-20{background:rgba(232,85,85,.15);color:var(--danger)}
+.bar-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
+.bar-card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+.drinks-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.drink-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--bg3);cursor:pointer;transition:.12s;position:relative;user-select:none}
+.drink-btn:active{transform:scale(.95)}
+.drink-btn.in-cart{border-color:var(--accent);background:rgba(124,111,247,.12)}
+.drink-btn.disabled{opacity:.4;cursor:not-allowed}
+.drink-name{font-size:13px;font-weight:500;color:var(--text)}
+.drink-price{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+.drink-qty{position:absolute;top:5px;right:7px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace}
+.cart-summary{background:var(--bg3);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:10px;border:1px solid var(--border)}
+.cart-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.cart-row .lbl{color:var(--muted)}
+.cart-row .val{font-family:'DM Mono',monospace;font-weight:500}
+.cart-total{border-top:1px solid var(--border);margin-top:8px;padding-top:8px}
+.cart-total .lbl{font-weight:600;color:var(--text)}
+.cart-total .val{color:var(--accent);font-size:15px}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+.progress-wrap{padding:10px 16px;display:flex;align-items:center;gap:10px}
+.progress-bar{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;transition:width .4s}
+.progress-text{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:24px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:24px;width:100%;max-width:340px}
+.modal h2{font-size:17px;font-weight:600;margin-bottom:8px}
+.modal p{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+.modal-btns{display:flex;gap:8px}
+.modal-btns .btn{flex:1}
+.modal-error{font-size:12px;color:var(--danger);margin-bottom:10px;display:none}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:.25s;z-index:300;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.center-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;gap:16px;text-align:center}
+.lock-icon{font-size:48px}
+.empty{text-align:center;padding:48px 24px;color:var(--muted);font-size:14px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
+.setting-row:last-child{border-bottom:none}
+.soldee{border-color:var(--danger) !important}
+</style>
+</head>
+<body>
+
+<!-- ══ SCREEN: LOCK ══ -->
+<div id="screen-lock" class="screen active">
+  <div class="center-screen">
+    <div class="lock-icon">🔐</div>
+    <div style="font-size:22px;font-weight:700">Accès animateurs</div>
+    <div style="font-size:14px;color:var(--muted);max-width:260px;line-height:1.6">Cette interface est réservée aux animateurs du bar.</div>
+    <div style="width:100%;max-width:300px">
+      <input type="password" class="inp" id="access-code" placeholder="Code d'accès" style="text-align:center;font-size:18px;letter-spacing:4px" />
+      <div id="access-error" style="font-size:12px;color:var(--danger);margin-bottom:10px;display:none">Code incorrect</div>
+      <button class="btn btn-primary" onclick="unlockBar()">Accéder →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: MAIN ══ -->
+<div id="screen-main" class="screen">
+  <div class="header">
+    <div><h1>Bar 🍺</h1><div class="sub" id="bar-mode-label">Mode bar</div></div>
+    <button style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="lockBar()">Verrouiller</button>
+  </div>
+  <div class="nav" id="main-nav">
+    <button class="active" onclick="mainTab('cartes',this)">Cartes</button>
+    <button onclick="mainTab('scan',this)">Scanner</button>
+    <button onclick="mainTab('admin',this)">Admin</button>
+  </div>
+
+  <!-- TAB: CARTES -->
+  <div class="content" id="tab-cartes">
+    <div style="position:relative;margin-bottom:12px">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none">⌕</span>
+      <input class="inp" style="padding-left:36px;margin-bottom:0" id="bar-search" placeholder="Rechercher par prénom ou email…" oninput="renderBarList()" />
+    </div>
+    <div id="bar-list"></div>
+  </div>
+
+  <!-- TAB: SCAN -->
+  <div class="content" id="tab-scan" style="display:none">
+    <div class="card" style="text-align:center;padding:32px">
+      <div style="font-size:36px;margin-bottom:12px">📷</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">Chercher une carte</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Entre l'ID affiché sous le QR code du client.</div>
+      <input class="inp" id="scan-input" placeholder="ID de carte (ex: -OAbc123...)" />
+      <button class="btn btn-primary" onclick="scanLookup()">Ouvrir la carte →</button>
+    </div>
+  </div>
+
+  <!-- TAB: ADMIN -->
+  <div class="content" id="tab-admin" style="display:none">
+    <div id="admin-lock-view">
+      <div class="card" style="text-align:center;padding:32px">
+        <div style="font-size:36px;margin-bottom:12px">🔒</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px">Accès administrateur</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Mot de passe admin requis</div>
+        <input type="password" class="inp" id="admin-pw-input" placeholder="Mot de passe admin" />
+        <div id="admin-pw-err" style="font-size:12px;color:var(--danger);margin-bottom:10px;display:none">Incorrect</div>
+        <button class="btn btn-primary" onclick="unlockAdmin()">Déverrouiller</button>
+      </div>
+    </div>
+    <div id="admin-main-view" style="display:none">
+      <div id="admin-stats-content"></div>
+      <div class="card">
+        <div class="card-label">Réglages</div>
+        <div class="setting-row">
+          <div><div style="font-size:14px">Nom de l'événement</div></div>
+          <button class="btn-sm btn-outline" style="border:1px solid var(--border2);border-radius:var(--r-sm);background:none;cursor:pointer;color:var(--text);padding:7px 12px;font-size:12px" onclick="changeEventName()">Modifier</button>
+        </div>
+        <div class="setting-row">
+          <div><div style="font-size:14px">Mot de passe bar</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Code d'accès animateurs</div></div>
+          <button class="btn-sm btn-outline" style="border:1px solid var(--border2);border-radius:var(--r-sm);background:none;cursor:pointer;color:var(--text);padding:7px 12px;font-size:12px" onclick="openChangeBarPw()">Modifier</button>
+        </div>
+        <div class="setting-row">
+          <div><div style="font-size:14px">Mot de passe admin</div></div>
+          <button class="btn-sm btn-outline" style="border:1px solid var(--border2);border-radius:var(--r-sm);background:none;cursor:pointer;color:var(--text);padding:7px 12px;font-size:12px" onclick="openChangeAdminPw()">Modifier</button>
+        </div>
+        <div class="setting-row" style="border:none">
+          <div><div style="font-size:14px">Réinitialiser toutes les données</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Irréversible</div></div>
+          <button class="btn-sm" style="background:var(--danger);color:#fff;border:none;border-radius:var(--r-sm);padding:7px 12px;font-size:12px;cursor:pointer" onclick="doReset()">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: ORDER ══ -->
+<div id="screen-order" class="screen">
+  <div class="header">
+    <div><h1 id="order-title">Commande</h1><div class="sub" id="order-sub"></div></div>
+    <button style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="showScreen('screen-main')">← Retour</button>
+  </div>
+  <div class="content">
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-val" id="order-spent">0.00 €</div><div class="stat-lbl">Consommé</div></div>
+      <div class="stat-box"><div class="stat-val" id="order-left">0.00 €</div><div class="stat-lbl">Restant</div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Ajouter des consommations</div>
+      <div class="drinks-grid" id="order-drinks"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Panier en cours</div>
+      <div id="order-cart-summary"></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-outline" id="clear-btn" onclick="clearCart()">Vider</button>
+        <button class="btn btn-success" id="validate-btn" onclick="validateCart()">Valider</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Historique</div>
+      <div id="order-history"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-uncheck">
+  <div class="modal">
+    <h2>Annuler une transaction</h2>
+    <p>Mot de passe administrateur requis.</p>
+    <input type="password" class="inp" id="uncheck-pw" placeholder="Mot de passe admin" />
+    <div class="modal-error" id="uncheck-err">Mot de passe incorrect</div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeModal('modal-uncheck')">Annuler</button>
+      <button class="btn btn-danger" onclick="confirmUncheck()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-change-pw">
+  <div class="modal">
+    <h2 id="change-pw-title">Nouveau mot de passe</h2>
+    <input type="password" class="inp" id="new-pw1" placeholder="Nouveau mot de passe" />
+    <input type="password" class="inp" id="new-pw2" placeholder="Confirmer" />
+    <div class="modal-error" id="change-pw-err">Les mots de passe ne correspondent pas</div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeModal('modal-change-pw')">Annuler</button>
+      <button class="btn btn-primary" onclick="doChangePw()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
+
+<script>
+// ════════════════════════════════════════
+// CONFIGURATION — même projet Firebase que index.html
+// ════════════════════════════════════════
+const firebaseConfig = {
+    apiKey: "AIzaSyAe1CHIbjM6KdRDnrlIUqIrIKthmWabrIQ",
+    authDomain: "bal-pi.firebaseapp.com",
+    projectId: "bal-pi",
+    storageBucket: "bal-pi.firebasestorage.app",
+    messagingSenderId: "13033772229",
+    appId: "1:13033772229:web:96795b43ba8b76ae908cac",
+    measurementId: "G-T9TNJ5W97R"
+  };
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.database();
+
+const DRINKS = [
+  {id:'soda',label:'Soda',price:1},{id:'eau',label:'Eau',price:0.5},
+  {id:'biere',label:'Bière',price:2},{id:'vin',label:'Vin',price:2},
+  {id:'jus',label:'Jus',price:1},{id:'cocktail',label:'Cocktail',price:3},
+  {id:'cafe',label:'Café',price:1},{id:'shot',label:'Shot',price:2},
+];
+
+let barUnlocked = false;
+let adminUnlocked = false;
+let currentCardId = null;
+let cart = {};
+let pendingUncheck = null;
+let changePwTarget = null;
+let liveUnsub = null;
+
+// ════════════════════════════════════════
+// LOCK / UNLOCK
+// ════════════════════════════════════════
+async function unlockBar() {
+  const code = document.getElementById('access-code').value;
+  const real = await db.ref('config/barPw').once('value').then(s => s.val() || 'bar2024');
+  if (code !== real) { document.getElementById('access-error').style.display = 'block'; return; }
+  barUnlocked = true;
+  document.getElementById('access-error').style.display = 'none';
+  showScreen('screen-main');
+  renderBarList();
+  document.getElementById('bar-mode-label').textContent = 'Mode bar';
+}
+
+function lockBar() {
+  barUnlocked = false;
+  adminUnlocked = false;
+  document.getElementById('access-code').value = '';
+  document.getElementById('admin-lock-view').style.display = 'block';
+  document.getElementById('admin-main-view').style.display = 'none';
+  showScreen('screen-lock');
+}
+
+async function unlockAdmin() {
+  const pw = document.getElementById('admin-pw-input').value;
+  const real = await db.ref('config/adminPw').once('value').then(s => s.val() || 'scout2024');
+  if (pw !== real) { document.getElementById('admin-pw-err').style.display = 'block'; return; }
+  adminUnlocked = true;
+  document.getElementById('admin-lock-view').style.display = 'none';
+  document.getElementById('admin-main-view').style.display = 'block';
+  renderAdminStats();
+}
+
+// ════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════
+function mainTab(t, btn) {
+  document.querySelectorAll('#main-nav button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['cartes','scan','admin'].forEach(v => {
+    document.getElementById('tab-'+v).style.display = v === t ? 'block' : 'none';
+  });
+  if (t === 'cartes') renderBarList();
+  if (t === 'admin' && adminUnlocked) renderAdminStats();
+}
+
+// ════════════════════════════════════════
+// BAR LIST
+// ════════════════════════════════════════
+async function renderBarList() {
+  const q = (document.getElementById('bar-search').value || '').toLowerCase();
+  const snap = await db.ref('cards').once('value');
+  const cards = snap.val() || {};
+  const el = document.getElementById('bar-list');
+
+  const filtered = Object.entries(cards).filter(([id, c]) =>
+    (c.email || '').toLowerCase().includes(q) || id.toLowerCase().includes(q)
+  );
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty">Aucune carte trouvée</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.reverse().map(([id, card]) => {
+    const spent = calcSpent(card);
+    const pct = Math.min(100, Math.round(spent / card.amount * 100));
+    const full = spent >= card.amount;
+    const color = full ? 'var(--danger)' : 'var(--accent)';
+    const name = card.email ? card.email.split('@')[0] : 'Anonyme';
+    return `
+      <div class="bar-card ${full ? 'soldee' : ''}">
+        <div class="bar-card-head" onclick="openOrder('${id}')">
+          <div>
+            <div style="font-size:16px;font-weight:600">${name}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${id.slice(-8)} · ${card.createdTime}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="badge badge-${card.amount}">${card.amount} €</span>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">${spent.toFixed(2)} / ${card.amount} €</div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+          <span class="progress-text">${pct}%${full ? ' SOLDÉE' : ''}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+// ORDER
+// ════════════════════════════════════════
+async function openOrder(id) {
+  currentCardId = id;
+  cart = {};
+  if (liveUnsub) liveUnsub();
+
+  const card = await db.ref('cards/' + id).once('value').then(s => s.val());
+  if (!card) { showToast('Carte introuvable'); return; }
+
+  const name = card.email ? card.email.split('@')[0] : id.slice(-6);
+  document.getElementById('order-title').textContent = name;
+  document.getElementById('order-sub').textContent = id.slice(-8) + ' · ' + card.amount + ' €';
+
+  renderOrderView(card);
+  showScreen('screen-order');
+
+  liveUnsub = () => db.ref('cards/' + id).off();
+  db.ref('cards/' + id).on('value', snap => { if (snap.val()) renderOrderView(snap.val()); });
+}
+
+function renderOrderView(card) {
+  const spent = calcSpent(card);
+  const cartTotal = Object.entries(cart).reduce((s,[did,qty]) => {
+    const d = DRINKS.find(x => x.id === did); return s + (d ? d.price * qty : 0);
+  }, 0);
+  const available = card.amount - spent - cartTotal;
+
+  document.getElementById('order-spent').textContent = spent.toFixed(2) + ' €';
+  document.getElementById('order-left').textContent = Math.max(0, card.amount - spent).toFixed(2) + ' €';
+
+  document.getElementById('order-drinks').innerHTML = DRINKS.map(d => {
+    const qty = cart[d.id] || 0;
+    const cantAfford = available < d.price && qty === 0;
+    return `<div class="drink-btn ${qty > 0 ? 'in-cart' : ''} ${cantAfford ? 'disabled' : ''}"
+      onclick="addToCart('${d.id}',${cantAfford})">
+      ${qty > 0 ? `<div class="drink-qty">${qty}</div>` : ''}
+      <div class="drink-name">${d.label}</div>
+      <div class="drink-price">${d.price} €</div>
+    </div>`;
+  }).join('');
+
+  renderCart();
+  renderHistory(card);
+}
+
+function addToCart(drinkId, cantAfford) {
+  if (cantAfford) { showToast('Solde insuffisant'); return; }
+  cart[drinkId] = (cart[drinkId] || 0) + 1;
+  db.ref('cards/' + currentCardId).once('value').then(s => { if(s.val()) renderOrderView(s.val()); });
+}
+
+function renderCart() {
+  const entries = Object.entries(cart).filter(([,q]) => q > 0);
+  const el = document.getElementById('order-cart-summary');
+  if (!entries.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:8px 0">Panier vide</div>';
+    document.getElementById('validate-btn').disabled = true;
+    document.getElementById('clear-btn').disabled = true;
+    return;
+  }
+  document.getElementById('validate-btn').disabled = false;
+  document.getElementById('clear-btn').disabled = false;
+
+  let total = 0;
+  const rows = entries.map(([did, qty]) => {
+    const d = DRINKS.find(x => x.id === did);
+    const sub = d.price * qty; total += sub;
+    return `<div class="cart-row"><span class="lbl">${qty}× ${d.label}</span><span class="val">${sub.toFixed(2)} €</span></div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="cart-summary">${rows}
+    <div class="cart-row cart-total">
+      <span class="lbl">Total</span><span class="val">${total.toFixed(2)} €</span>
+    </div></div>`;
+}
+
+function clearCart() {
+  cart = {};
+  db.ref('cards/' + currentCardId).once('value').then(s => { if(s.val()) renderOrderView(s.val()); });
+}
+
+async function validateCart() {
+  const entries = Object.entries(cart).filter(([,q]) => q > 0);
+  if (!entries.length) return;
+  const card = await db.ref('cards/' + currentCardId).once('value').then(s => s.val());
+  const spent = calcSpent(card);
+  const cartTotal = entries.reduce((s,[did,qty]) => { const d = DRINKS.find(x=>x.id===did); return s+d.price*qty; }, 0);
+  if (spent + cartTotal > card.amount) { showToast('Solde insuffisant'); return; }
+
+  const items = {};
+  entries.forEach(([did, qty]) => { items[did] = qty; });
+  await db.ref('cards/' + currentCardId + '/transactions').push({
+    items, total: cartTotal, ts: Date.now(),
+    time: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})
+  });
+  cart = {};
+  showToast('Commande validée ✓');
+}
+
+function renderHistory(card) {
+  const txns = card.transactions || {};
+  const el = document.getElementById('order-history');
+  const entries = Object.entries(txns).sort((a,b) => b[1].ts - a[1].ts);
+  if (!entries.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">Aucune transaction</div>'; return; }
+  el.innerHTML = entries.map(([txid, tx]) => {
+    const items = Object.entries(tx.items || {}).map(([did, qty]) => {
+      const d = DRINKS.find(x => x.id === did);
+      return d ? `${qty}× ${d.label}` : '';
+    }).filter(Boolean).join(', ');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;font-weight:500">${items}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${tx.time}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:'DM Mono',monospace;font-size:14px;color:var(--accent)">${tx.total.toFixed(2)} €</span>
+        <button onclick="askUncheck('${txid}')" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);padding:4px 8px;font-size:11px;cursor:pointer">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function scanLookup() {
+  const id = document.getElementById('scan-input').value.trim();
+  if (!id) { showToast('Entre un ID'); return; }
+  openOrder(id);
+}
+
+// ════════════════════════════════════════
+// UNCHECK
+// ════════════════════════════════════════
+function askUncheck(txid) {
+  pendingUncheck = txid;
+  document.getElementById('uncheck-pw').value = '';
+  document.getElementById('uncheck-err').style.display = 'none';
+  document.getElementById('modal-uncheck').classList.add('open');
+}
+
+async function confirmUncheck() {
+  const pw = document.getElementById('uncheck-pw').value;
+  const real = await db.ref('config/adminPw').once('value').then(s => s.val() || 'scout2024');
+  if (pw !== real) { document.getElementById('uncheck-err').style.display = 'block'; return; }
+  await db.ref('cards/' + currentCardId + '/transactions/' + pendingUncheck).remove();
+  closeModal('modal-uncheck');
+  showToast('Transaction annulée');
+}
+
+// ════════════════════════════════════════
+// ADMIN
+// ════════════════════════════════════════
+async function renderAdminStats() {
+  const cards = Object.values((await db.ref('cards').once('value')).val() || {});
+  const totalCash = cards.reduce((s,c) => s + c.amount, 0);
+  const totalSpent = cards.reduce((s,c) => s + calcSpent(c), 0);
+  const breakdown = {5:0,10:0,15:0,20:0};
+  cards.forEach(c => { if (breakdown[c.amount] !== undefined) breakdown[c.amount]++; });
+
+  document.getElementById('admin-stats-content').innerHTML = `
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-val">${cards.length}</div><div class="stat-lbl">Cartes vendues</div></div>
+      <div class="stat-box"><div class="stat-val">${totalCash} €</div><div class="stat-lbl">Encaissé</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-val">${totalSpent.toFixed(0)} €</div><div class="stat-lbl">Consommé</div></div>
+      <div class="stat-box"><div class="stat-val">${(totalCash - totalSpent).toFixed(0)} €</div><div class="stat-lbl">Restant</div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Répartition</div>
+      ${[5,10,15,20].map(a=>`
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">
+          <span>Cartes ${a} €</span>
+          <span style="font-family:'DM Mono',monospace;color:var(--accent)">${breakdown[a]} × ${a} € = ${breakdown[a]*a} €</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+async function changeEventName() {
+  const cur = await db.ref('config/eventName').once('value').then(s => s.val() || 'Bal des Scouts');
+  const n = prompt('Nom de l\'événement :', cur);
+  if (n) { await db.ref('config/eventName').set(n); showToast('Mis à jour ✓'); }
+}
+
+function openChangeBarPw() {
+  changePwTarget = 'barPw';
+  document.getElementById('change-pw-title').textContent = 'Mot de passe bar';
+  document.getElementById('new-pw1').value = '';
+  document.getElementById('new-pw2').value = '';
+  document.getElementById('change-pw-err').style.display = 'none';
+  document.getElementById('modal-change-pw').classList.add('open');
+}
+
+function openChangeAdminPw() {
+  changePwTarget = 'adminPw';
+  document.getElementById('change-pw-title').textContent = 'Mot de passe admin';
+  document.getElementById('new-pw1').value = '';
+  document.getElementById('new-pw2').value = '';
+  document.getElementById('change-pw-err').style.display = 'none';
+  document.getElementById('modal-change-pw').classList.add('open');
+}
+
+async function doChangePw() {
+  const p1 = document.getElementById('new-pw1').value;
+  const p2 = document.getElementById('new-pw2').value;
+  if (!p1 || p1 !== p2) { document.getElementById('change-pw-err').style.display = 'block'; return; }
+  await db.ref('config/' + changePwTarget).set(p1);
+  closeModal('modal-change-pw');
+  showToast('Mot de passe modifié ✓');
+}
+
+async function doReset() {
+  if (!confirm('Supprimer TOUTES les cartes ? Irréversible.')) return;
+  await db.ref('cards').remove();
+  showToast('Réinitialisé');
+  renderAdminStats();
+}
+
+// ════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════
+function calcSpent(card) {
+  return Object.values(card.transactions || {}).reduce((s,tx) => s + (tx.total||0), 0);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'screen-main') renderBarList();
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>
