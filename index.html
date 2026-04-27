@@ -283,24 +283,30 @@ function initAuth() {
 
     auth.onAuthStateChanged(async user => {
       clearTimeout(fallback);
-      if (user) {
-        currentUser = user;
-        await loadUserState();
-      } else {
-        if (firebase.auth.isSignInWithEmailLink(auth, window.location.href)) {
-          let email = window.localStorage.getItem('emailForSignIn');
-          if (!email) email = window.prompt('Confirme ton email pour te connecter :');
-          try {
-            await auth.signInWithEmailLink(email, window.location.href);
-            window.localStorage.removeItem('emailForSignIn');
-            window.history.replaceState({}, document.title, APP_URL);
-          } catch(e) {
-            showToast('Lien invalide ou expiré');
+      try {
+        if (user) {
+          currentUser = user;
+          await loadUserState();
+        } else {
+          // SDK compat : isSignInWithEmailLink est une méthode de l'instance auth
+          if (auth.isSignInWithEmailLink(window.location.href)) {
+            let email = window.localStorage.getItem('emailForSignIn');
+            if (!email) email = window.prompt('Confirme ton email pour te connecter :');
+            try {
+              await auth.signInWithEmailLink(email, window.location.href);
+              window.localStorage.removeItem('emailForSignIn');
+              window.history.replaceState({}, document.title, APP_URL);
+            } catch(e) {
+              showToast('Lien invalide ou expiré');
+              showScreen('screen-login');
+            }
+          } else {
             showScreen('screen-login');
           }
-        } else {
-          showScreen('screen-login');
         }
+      } catch(err) {
+        console.error('Auth state error:', err);
+        showScreen('screen-login');
       }
     });
   } catch(e) {
