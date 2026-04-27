@@ -95,9 +95,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="sub-text">Crée ta carte boisson et suis ton solde en direct.</div>
     <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:0">
       <div id="login-step1">
-        <input class="inp" type="email" id="email-input" placeholder="ton@email.com" />
-        <button class="btn btn-primary" id="send-link-btn" onclick="sendMagicLink()">Recevoir mon lien de connexion →</button>
+        <!-- Toggle Connexion / Inscription -->
+        <div style="display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px;margin-bottom:14px">
+          <button id="tab-signin" onclick="setLoginMode('signin')"
+            style="flex:1;padding:9px;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;background:var(--accent);color:#fff;font-family:'DM Sans',sans-serif;transition:.15s">Connexion</button>
+          <button id="tab-signup" onclick="setLoginMode('signup')"
+            style="flex:1;padding:9px;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.15s">Créer un compte</button>
+        </div>
+
+        <input class="inp" type="email" id="email-input" placeholder="ton@email.com" autocomplete="email" />
+        <input class="inp" type="password" id="password-input" placeholder="Mot de passe (min 6 caractères)" autocomplete="current-password" />
+        <button class="btn btn-primary" id="login-btn" onclick="loginSubmit()">Se connecter →</button>
         <div id="login-error" style="font-size:12px;color:var(--danger);margin-top:8px;display:none"></div>
+
+        <div style="text-align:center;margin-top:14px">
+          <a id="forgot-link" onclick="forgotPassword()" style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline">Mot de passe oublié ?</a>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin:18px 0 12px">
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+          <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">ou</span>
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+        </div>
+        <button class="btn btn-outline" onclick="sendMagicLinkOnly()" style="font-size:13px">✉️ Connexion par lien magique</button>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.5">
+          Si tu as oublié ton mot de passe, on t'envoie un lien à usage unique.
+        </div>
       </div>
       <div id="login-step2" style="display:none">
         <div class="success-box">✉️ Lien envoyé ! Vérifie ta boîte mail et clique le lien pour te connecter.</div>
@@ -275,6 +298,9 @@ function initAuth() {
     auth = firebase.auth();
     db   = firebase.database();
 
+    // Persistance LOCAL : la session reste après fermeture/rouverture du navigateur
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+
     // Si Firebase ne répond pas en 6s, on affiche quand même le login
     const fallback = setTimeout(() => {
       if (document.getElementById('screen-splash').classList.contains('active')) {
@@ -317,17 +343,105 @@ function initAuth() {
   }
 }
 
-async function sendMagicLink() {
+// Mode courant : 'signin' (par défaut) ou 'signup'
+let loginMode = 'signin';
+
+function setLoginMode(mode) {
+  loginMode = mode;
+  const tabSignin = document.getElementById('tab-signin');
+  const tabSignup = document.getElementById('tab-signup');
+  const btn       = document.getElementById('login-btn');
+  const forgot    = document.getElementById('forgot-link');
+  const pwInp     = document.getElementById('password-input');
+  const errEl     = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  if (mode === 'signup') {
+    tabSignup.style.background = 'var(--accent)';
+    tabSignup.style.color = '#fff';
+    tabSignin.style.background = 'transparent';
+    tabSignin.style.color = 'var(--muted)';
+    btn.textContent = 'Créer mon compte →';
+    pwInp.setAttribute('autocomplete', 'new-password');
+    pwInp.setAttribute('placeholder', 'Choisis un mot de passe (min 6 car.)');
+    forgot.style.display = 'none';
+  } else {
+    tabSignin.style.background = 'var(--accent)';
+    tabSignin.style.color = '#fff';
+    tabSignup.style.background = 'transparent';
+    tabSignup.style.color = 'var(--muted)';
+    btn.textContent = 'Se connecter →';
+    pwInp.setAttribute('autocomplete', 'current-password');
+    pwInp.setAttribute('placeholder', 'Mot de passe');
+    forgot.style.display = '';
+  }
+}
+
+function authErrorMessage(e) {
+  switch(e.code) {
+    case 'auth/invalid-email':           return 'Email invalide.';
+    case 'auth/missing-password':        return 'Mot de passe requis.';
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+    case 'auth/invalid-login-credentials':
+      return 'Email ou mot de passe incorrect.';
+    case 'auth/user-not-found':          return 'Aucun compte avec cet email. Bascule sur "Créer un compte".';
+    case 'auth/email-already-in-use':    return 'Email déjà utilisé. Bascule sur "Connexion".';
+    case 'auth/weak-password':           return 'Mot de passe trop faible (min. 6 caractères).';
+    case 'auth/too-many-requests':       return 'Trop de tentatives. Patiente quelques minutes.';
+    case 'auth/user-disabled':           return 'Ce compte est désactivé.';
+    case 'auth/network-request-failed':  return 'Pas de connexion réseau.';
+    default:                             return 'Erreur : ' + (e.message || e.code);
+  }
+}
+
+async function loginSubmit() {
   const email = document.getElementById('email-input').value.trim();
+  const pw    = document.getElementById('password-input').value;
   const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  errEl.style.display = 'none';
+
   if (!email || !email.includes('@')) {
     errEl.textContent = 'Entre un email valide.';
     errEl.style.display = 'block';
     return;
   }
-  errEl.style.display = 'none';
-  document.getElementById('send-link-btn').disabled = true;
+  if (!pw) {
+    errEl.textContent = 'Entre ton mot de passe (ou utilise le lien magique en bas).';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (loginMode === 'signup' && pw.length < 6) {
+    errEl.textContent = 'Mot de passe trop court (min. 6 caractères).';
+    errEl.style.display = 'block';
+    return;
+  }
 
+  btn.disabled = true;
+  try {
+    if (loginMode === 'signup') {
+      await auth.createUserWithEmailAndPassword(email, pw);
+    } else {
+      await auth.signInWithEmailAndPassword(email, pw);
+    }
+    // onAuthStateChanged prend la suite
+  } catch(e) {
+    errEl.textContent = authErrorMessage(e);
+    errEl.style.display = 'block';
+    btn.disabled = false;
+  }
+}
+
+async function sendMagicLinkOnly() {
+  const email = document.getElementById('email-input').value.trim();
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Entre ton email d\'abord.';
+    errEl.style.display = 'block';
+    return;
+  }
   try {
     await auth.sendSignInLinkToEmail(email, {
       url: APP_URL,
@@ -337,16 +451,34 @@ async function sendMagicLink() {
     document.getElementById('login-step1').style.display = 'none';
     document.getElementById('login-step2').style.display = 'block';
   } catch(e) {
-    errEl.textContent = 'Erreur : ' + e.message;
+    errEl.textContent = authErrorMessage(e);
     errEl.style.display = 'block';
-    document.getElementById('send-link-btn').disabled = false;
+  }
+}
+
+async function forgotPassword() {
+  const email = document.getElementById('email-input').value.trim();
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Entre ton email d\'abord pour recevoir un lien de réinitialisation.';
+    errEl.style.display = 'block';
+    return;
+  }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    showToast('📧 Email de réinitialisation envoyé');
+  } catch(e) {
+    errEl.textContent = authErrorMessage(e);
+    errEl.style.display = 'block';
   }
 }
 
 function resetLogin() {
   document.getElementById('login-step1').style.display = 'block';
   document.getElementById('login-step2').style.display = 'none';
-  document.getElementById('send-link-btn').disabled = false;
+  document.getElementById('login-btn').disabled = false;
+  document.getElementById('password-input').value = '';
 }
 
 async function logout() {
