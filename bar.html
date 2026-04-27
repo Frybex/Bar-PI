@@ -234,15 +234,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 // ════════════════════════════════════════
 // CONFIGURATION — même projet Firebase que index.html
 // ════════════════════════════════════════
-const firebaseConfig = {
-    apiKey: "AIzaSyAe1CHIbjM6KdRDnrlIUqIrIKthmWabrIQ",
-    authDomain: "bal-pi.firebaseapp.com",
-    projectId: "bal-pi",
-    storageBucket: "bal-pi.firebasestorage.app",
-    messagingSenderId: "13033772229",
-    appId: "1:13033772229:web:96795b43ba8b76ae908cac",
-    measurementId: "G-T9TNJ5W97R"
-  };
+const FIREBASE_CONFIG = {
+  apiKey:      "AIzaSyAe1CHIbjM6KdRDnrlIUqIrIKthmWabrIQ",
+  authDomain:  "bal-pi.firebaseapp.com",
+  databaseURL: "https://bal-pi-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:   "bal-pi",
+  storageBucket: "bal-pi.firebasestorage.app",
+  messagingSenderId: "13033772229",
+  appId:       "1:13033772229:web:96795b43ba8b76ae908cac"
+};
 
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.database();
