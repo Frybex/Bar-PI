@@ -474,11 +474,16 @@ async function loadUserState() {
 
   if (activeCardId) {
     const cardSnap = await db.ref('cards/' + activeCardId).once('value');
-    if (cardSnap.val()) {
-      showQR(activeCardId, cardSnap.val());
+    const card = cardSnap.val();
+    const isSoldee = card && (card.soldeeAt || calcSpent(card) >= card.amount);
+
+    if (card && !isSoldee) {
+      // Carte active utilisable → on l'affiche
+      showQR(activeCardId, card);
       return;
     }
-    // Référence orpheline → on nettoie
+    // Carte inexistante OU soldée → on détache la référence
+    // (laisse l'utilisateur libre d'aller sur le wallet ou racheter)
     await db.ref('users/' + currentUser.uid + '/activeCardId').remove();
   }
 
