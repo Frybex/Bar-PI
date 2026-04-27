@@ -313,7 +313,7 @@ const FIREBASE_CONFIG = {
 
 // SumUp — remplace par ton Merchant Code et ta clé API
 const SUMUP_MERCHANT_CODE = "ME4DN43S";
-const SUMUP_API_KEY        = "sup_pk_1ppZgCz8QY0hKalfiObtWcpIOti5cAZaF";
+const SUMUP_API_KEY        = "sup_sk_BhabmKGhEW3ExdHhwuK9NooZTg2T0EUKY";
 
 // URL de cette page (utilisée pour replaceState après reset password)
 const APP_URL = window.location.origin + window.location.pathname;
@@ -729,11 +729,13 @@ function loadSumUp() {
 
   const script = document.createElement('script');
   script.src = 'https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js';
+  script.onerror = () => {
+    console.error('SumUp SDK failed to load');
+    container.style.display = 'none';
+    fallback.style.display = 'block';
+  };
   script.onload = async () => {
     try {
-      // 1. Créer un checkout côté serveur via l'API SumUp
-      // En prod : appelle ton backend ou Firebase Function
-      // Ici : appel direct (déconseillé en prod mais fonctionnel pour les tests)
       const checkoutRes = await fetch('https://api.sumup.com/v0.1/checkouts', {
         method: 'POST',
         headers: {
@@ -749,6 +751,14 @@ function loadSumUp() {
         })
       });
       const checkout = await checkoutRes.json();
+      console.log('SumUp checkout response:', checkout);
+
+      if (!checkout.id) {
+        console.error('SumUp checkout error:', checkout);
+        container.style.display = 'none';
+        fallback.style.display = 'block';
+        return;
+      }
 
       SumUpCard.mount({
         id: checkout.id,
@@ -759,6 +769,7 @@ function loadSumUp() {
         }
       });
     } catch(e) {
+      console.error('SumUp error:', e);
       container.style.display = 'none';
       fallback.style.display = 'block';
     }
