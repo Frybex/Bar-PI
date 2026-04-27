@@ -1,7 +1,7 @@
 {
-  "name": "Bar Scout",
-  "short_name": "Bar Scout",
-  "description": "Ta carte boisson pour le bal des scouts",
+  "name": "Bar Pi",
+  "short_name": "Bar Pi",
+  "description": "Ta carte boisson pour le Bar Pi",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
