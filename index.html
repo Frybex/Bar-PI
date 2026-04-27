@@ -760,9 +760,10 @@ function loadSumUp() {
         return;
       }
 
+      container.innerHTML = `<div id="${checkout.id}"></div>`;
+
       SumUpCard.mount({
         id: checkout.id,
-        onLoad: () => { container.querySelector('.spinner') && (container.innerHTML = '<div id="sumup-card"></div>'); },
         onResponse: (type, body) => {
           if (type === 'success') onPaymentSuccess(checkout.id);
           else if (type === 'error') showToast('Paiement refusé — réessaie');
