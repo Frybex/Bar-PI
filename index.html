@@ -111,20 +111,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div style="text-align:center;margin-top:14px">
           <a id="forgot-link" onclick="forgotPassword()" style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline">Mot de passe oublié ?</a>
         </div>
-
-        <div style="display:flex;align-items:center;gap:10px;margin:18px 0 12px">
-          <div style="flex:1;height:1px;background:var(--border)"></div>
-          <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">ou</span>
-          <div style="flex:1;height:1px;background:var(--border)"></div>
-        </div>
-        <button class="btn btn-outline" onclick="sendMagicLinkOnly()" style="font-size:13px">✉️ Connexion par lien magique</button>
-        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.5">
-          Si tu as oublié ton mot de passe, on t'envoie un lien à usage unique.
-        </div>
-      </div>
-      <div id="login-step2" style="display:none">
-        <div class="success-box">✉️ Lien envoyé ! Vérifie ta boîte mail et clique le lien pour te connecter.</div>
-        <button class="btn btn-outline" onclick="resetLogin()">Changer d'email</button>
       </div>
     </div>
   </div>
@@ -251,7 +237,7 @@ const FIREBASE_CONFIG = {
 const SUMUP_MERCHANT_CODE = "YOUR_MERCHANT_CODE";
 const SUMUP_API_KEY        = "YOUR_SUMUP_API_KEY"; // Client Credentials
 
-// URL de cette page (pour le lien magique)
+// URL de cette page (utilisée pour replaceState après reset password)
 const APP_URL = window.location.origin + window.location.pathname;
 
 // ════════════════════════════════════════
@@ -316,21 +302,7 @@ function initAuth() {
           currentUser = user;
           await loadUserState();
         } else {
-          // SDK compat : isSignInWithEmailLink est une méthode de l'instance auth
-          if (auth.isSignInWithEmailLink(window.location.href)) {
-            let email = window.localStorage.getItem('emailForSignIn');
-            if (!email) email = window.prompt('Confirme ton email pour te connecter :');
-            try {
-              await auth.signInWithEmailLink(email, window.location.href);
-              window.localStorage.removeItem('emailForSignIn');
-              window.history.replaceState({}, document.title, APP_URL);
-            } catch(e) {
-              showToast('Lien invalide ou expiré');
-              showScreen('screen-login');
-            }
-          } else {
-            showScreen('screen-login');
-          }
+          showScreen('screen-login');
         }
       } catch(err) {
         console.error('Auth state error:', err);
@@ -408,7 +380,7 @@ async function loginSubmit() {
     return;
   }
   if (!pw) {
-    errEl.textContent = 'Entre ton mot de passe (ou utilise le lien magique en bas).';
+    errEl.textContent = 'Entre ton mot de passe.';
     errEl.style.display = 'block';
     return;
   }
@@ -433,29 +405,6 @@ async function loginSubmit() {
   }
 }
 
-async function sendMagicLinkOnly() {
-  const email = document.getElementById('email-input').value.trim();
-  const errEl = document.getElementById('login-error');
-  errEl.style.display = 'none';
-  if (!email || !email.includes('@')) {
-    errEl.textContent = 'Entre ton email d\'abord.';
-    errEl.style.display = 'block';
-    return;
-  }
-  try {
-    await auth.sendSignInLinkToEmail(email, {
-      url: APP_URL,
-      handleCodeInApp: true
-    });
-    window.localStorage.setItem('emailForSignIn', email);
-    document.getElementById('login-step1').style.display = 'none';
-    document.getElementById('login-step2').style.display = 'block';
-  } catch(e) {
-    errEl.textContent = authErrorMessage(e);
-    errEl.style.display = 'block';
-  }
-}
-
 async function forgotPassword() {
   const email = document.getElementById('email-input').value.trim();
   const errEl = document.getElementById('login-error');
@@ -472,13 +421,6 @@ async function forgotPassword() {
     errEl.textContent = authErrorMessage(e);
     errEl.style.display = 'block';
   }
-}
-
-function resetLogin() {
-  document.getElementById('login-step1').style.display = 'block';
-  document.getElementById('login-step2').style.display = 'none';
-  document.getElementById('login-btn').disabled = false;
-  document.getElementById('password-input').value = '';
 }
 
 async function logout() {
