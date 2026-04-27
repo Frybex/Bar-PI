@@ -620,30 +620,35 @@ function choosePayment(method) {
 
 async function submitCashRequest() {
   if (!selectedAmount || !currentUser) return;
-  // Récupère le profil pour pré-remplir
-  const profSnap = await db.ref('users/' + currentUser.uid + '/profile').once('value');
-  const prof = profSnap.val() || {};
-  const displayName = (prof.firstname || prof.lastname)
-    ? ((prof.firstname || '') + ' ' + (prof.lastname || '')).trim()
-    : (currentUser.displayName || (currentUser.email || '').split('@')[0]);
+  try {
+    // Récupère le profil pour pré-remplir
+    const profSnap = await db.ref('users/' + currentUser.uid + '/profile').once('value');
+    const prof = profSnap.val() || {};
+    const displayName = (prof.firstname || prof.lastname)
+      ? ((prof.firstname || '') + ' ' + (prof.lastname || '')).trim()
+      : (currentUser.displayName || (currentUser.email || '').split('@')[0]);
 
-  const req = {
-    uid:        currentUser.uid,
-    email:      currentUser.email,
-    firstname:  prof.firstname || '',
-    lastname:   prof.lastname  || '',
-    displayName,
-    amount:     selectedAmount,
-    paymentMethod: 'cash',
-    status:     'pending',
-    createdAt:  Date.now(),
-    requestedTime: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})
-  };
-  const ref = db.ref('cardRequests').push();
-  await ref.set(req);
-  await db.ref('users/' + currentUser.uid + '/pendingRequestId').set(ref.key);
-  showToast('Demande envoyée — direction le bar 🍺');
-  showPendingScreen(ref.key, selectedAmount);
+    const req = {
+      uid:        currentUser.uid,
+      email:      currentUser.email,
+      firstname:  prof.firstname || '',
+      lastname:   prof.lastname  || '',
+      displayName,
+      amount:     selectedAmount,
+      paymentMethod: 'cash',
+      status:     'pending',
+      createdAt:  Date.now(),
+      requestedTime: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})
+    };
+    const ref = db.ref('cardRequests').push();
+    await ref.set(req);
+    await db.ref('users/' + currentUser.uid + '/pendingRequestId').set(ref.key);
+    showToast('Demande envoyée — direction le bar 🍺');
+    showPendingScreen(ref.key, selectedAmount);
+  } catch(e) {
+    console.error('submitCashRequest error:', e);
+    showToast('Erreur : impossible d\'envoyer la demande. Vérifie ta connexion.');
+  }
 }
 
 let pendingRequestUnsub = null;
