@@ -232,9 +232,7 @@ const APP_URL = window.location.origin + window.location.pathname;
 // ════════════════════════════════════════
 // INIT FIREBASE
 // ════════════════════════════════════════
-firebase.initializeApp(FIREBASE_CONFIG);
-const auth = firebase.auth();
-const db   = firebase.database();
+let auth, db;
 
 const DRINKS = [
   {id:'soda',label:'Soda',price:1},{id:'eau',label:'Eau',price:0.5},
@@ -267,30 +265,49 @@ function triggerInstall() {
 }
 
 // ════════════════════════════════════════
-// AUTH
+// AUTH — avec timeout de secours
 // ════════════════════════════════════════
-auth.onAuthStateChanged(async user => {
-  if (user) {
-    currentUser = user;
-    await loadUserState();
-  } else {
-    // Vérifie si on revient d'un lien magique
-    if (firebase.auth.isSignInWithEmailLink(auth, window.location.href)) {
-      let email = window.localStorage.getItem('emailForSignIn');
-      if (!email) email = window.prompt('Confirme ton email pour te connecter :');
-      try {
-        await auth.signInWithEmailLink(email, window.location.href);
-        window.localStorage.removeItem('emailForSignIn');
-        window.history.replaceState({}, document.title, APP_URL);
-      } catch(e) {
-        showToast('Lien invalide ou expiré');
+function initAuth() {
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    auth = firebase.auth();
+    db   = firebase.database();
+
+    // Si Firebase ne répond pas en 6s, on affiche quand même le login
+    const fallback = setTimeout(() => {
+      if (document.getElementById('screen-splash').classList.contains('active')) {
+        console.warn('Firebase auth timeout — affichage forcé du login');
         showScreen('screen-login');
       }
-    } else {
-      showScreen('screen-login');
-    }
+    }, 6000);
+
+    auth.onAuthStateChanged(async user => {
+      clearTimeout(fallback);
+      if (user) {
+        currentUser = user;
+        await loadUserState();
+      } else {
+        if (firebase.auth.isSignInWithEmailLink(auth, window.location.href)) {
+          let email = window.localStorage.getItem('emailForSignIn');
+          if (!email) email = window.prompt('Confirme ton email pour te connecter :');
+          try {
+            await auth.signInWithEmailLink(email, window.location.href);
+            window.localStorage.removeItem('emailForSignIn');
+            window.history.replaceState({}, document.title, APP_URL);
+          } catch(e) {
+            showToast('Lien invalide ou expiré');
+            showScreen('screen-login');
+          }
+        } else {
+          showScreen('screen-login');
+        }
+      }
+    });
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    showScreen('screen-login');
   }
-});
+}
 
 async function sendMagicLink() {
   const email = document.getElementById('email-input').value.trim();
@@ -585,6 +602,9 @@ function showToast(msg) {
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 2600);
 }
+
+// Démarrage
+initAuth();
 
 // Service Worker
 if ('serviceWorker' in navigator) {
