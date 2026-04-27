@@ -1,7 +1,15 @@
-const CACHE = 'bar-scout-v2';
+// ════════════════════════════════════════
+// SERVICE WORKER — Bar Scout
+// Stratégies :
+//   - HTML & JS locaux  → NETWORK-FIRST (toujours la dernière version)
+//   - Reste (icônes, fonts, libs CDN)  → STALE-WHILE-REVALIDATE
+//   - Firebase auth/db  → bypass complet (jamais en cache)
+// ════════════════════════════════════════
+const CACHE = 'bar-scout-v3';
 const CORE_ASSETS = [
   './',
   './index.html',
+  './bar.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -12,14 +20,13 @@ const OPTIONAL_ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js',
+  'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js',
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(async c => {
-      // Les assets locaux DOIVENT être en cache
       await c.addAll(CORE_ASSETS);
-      // Les CDN externes : on tolère les échecs pour ne pas bloquer l'install
       await Promise.all(OPTIONAL_ASSETS.map(url =>
         c.add(url).catch(err => console.warn('SW: skip cache', url, err))
       ));
@@ -36,20 +43,59 @@ self.addEventListener('activate', e => {
   );
 });
 
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  if (e.request.url.includes('firebaseio.com') || e.request.url.includes('googleapis.com/identitytoolkit')) return;
+// Permet de forcer un skipWaiting depuis la page si besoin
+self.addEventListener('message', e => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
+});
 
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+
+  // Bypass : Firebase auth & realtime DB ne doivent jamais passer par le cache
+  if (url.host.includes('firebaseio.com') ||
+      url.host.includes('firebasedatabase.app') ||
+      url.host.includes('identitytoolkit.googleapis.com') ||
+      url.host.includes('securetoken.googleapis.com')) {
+    return;
+  }
+
+  const isSameOrigin = url.origin === self.location.origin;
+  const isHTML =
+    req.mode === 'navigate' ||
+    req.destination === 'document' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('/');
+  const isOwnScript = isSameOrigin && (url.pathname.endsWith('.js') || url.pathname.endsWith('.json'));
+
+  // ──────── NETWORK-FIRST pour HTML & JS/JSON locaux ────────
+  if (isHTML || isOwnScript) {
+    e.respondWith(
+      fetch(req).then(res => {
         if (res && res.status === 200) {
           const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          caches.open(CACHE).then(c => c.put(req, clone));
+        }
+        return res;
+      }).catch(() => caches.match(req).then(cached => cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // ──────── STALE-WHILE-REVALIDATE pour le reste ────────
+  e.respondWith(
+    caches.match(req).then(cached => {
+      const fetchPromise = fetch(req).then(res => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(req, clone));
         }
         return res;
       }).catch(() => cached);
+      return cached || fetchPromise;
     })
   );
 });
