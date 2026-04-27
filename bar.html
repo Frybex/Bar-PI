@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0f0f13">
-<title>Bar Scout — Bar</title>
+<title>Bar Pi — Bar</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
 :root{--bg:#0f0f13;--bg2:#18181f;--bg3:#21212b;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--text:#f0f0f0;--muted:#888;--accent:#7c6ff7;--accent2:#5a52d5;--success:#22c97a;--danger:#e85555;--warning:#f0a030;--r:12px;--r-sm:8px}
@@ -81,6 +81,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
 .setting-row:last-child{border-bottom:none}
 .soldee{border-color:var(--danger) !important}
+
+/* ── Carte solde restant ── */
+.balance-card{border-radius:var(--r);padding:22px 20px;margin-bottom:14px;text-align:center;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25);transition:background .25s}
+.balance-lvl-high{background:linear-gradient(135deg,#22c97a 0%,#1ba868 100%)}
+.balance-lvl-mid {background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%)}
+.balance-lvl-low {background:linear-gradient(135deg,#f0a030 0%,#d68a18 100%)}
+.balance-lvl-zero{background:linear-gradient(135deg,#e85555 0%,#c43838 100%)}
+.balance-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.6px;opacity:.85;margin-bottom:8px}
+.balance-amount{font-size:48px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;letter-spacing:-1px}
+.balance-sub{font-size:12px;opacity:.78;margin-top:6px;font-family:'DM Mono',monospace}
+.balance-bar{margin-top:16px;height:6px;background:rgba(0,0,0,.22);border-radius:3px;overflow:hidden}
+.balance-bar-fill{height:100%;background:#fff;border-radius:3px;transition:width .4s}
+
+/* ── Historique transactions ── */
+.tx-row{padding:11px 0;border-bottom:1px solid var(--border)}
+.tx-row:last-child{border-bottom:none}
+.tx-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.tx-time{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:5px}
+.tx-amount{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--text)}
+.tx-actions{display:flex;align-items:center;gap:8px}
+.tx-cancel{background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);padding:3px 8px;font-size:11px;cursor:pointer;transition:.15s}
+.tx-cancel:hover{color:var(--danger);border-color:var(--danger)}
+.tx-items{display:flex;flex-wrap:wrap;gap:5px}
+.item-chip{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:4px 10px;font-size:12px;color:var(--text);font-weight:500;display:inline-flex;align-items:center;gap:5px}
+.item-chip .qty{color:var(--accent);font-family:'DM Mono',monospace;font-weight:600}
 </style>
 </head>
 <body>
@@ -115,7 +140,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="content" id="tab-cartes">
     <div style="position:relative;margin-bottom:12px">
       <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none">⌕</span>
-      <input class="inp" style="padding-left:36px;margin-bottom:0" id="bar-search" placeholder="Rechercher par prénom ou email…" oninput="renderBarList()" />
+      <input class="inp" style="padding-left:36px;margin-bottom:0" id="bar-search" placeholder="Rechercher par prénom, nom ou email…" oninput="renderBarList()" />
     </div>
     <div id="bar-list"></div>
   </div>
@@ -181,9 +206,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <button style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="showScreen('screen-main')">← Retour</button>
   </div>
   <div class="content">
-    <div class="stats-row">
-      <div class="stat-box"><div class="stat-val" id="order-spent">0.00 €</div><div class="stat-lbl">Consommé</div></div>
-      <div class="stat-box"><div class="stat-val" id="order-left">0.00 €</div><div class="stat-lbl">Restant</div></div>
+    <div class="balance-card balance-lvl-mid" id="balance-card">
+      <div class="balance-label">Solde restant</div>
+      <div class="balance-amount" id="order-left">0.00 €</div>
+      <div class="balance-sub" id="balance-sub">sur 0 €</div>
+      <div class="balance-bar"><div class="balance-bar-fill" id="balance-fill" style="width:100%"></div></div>
     </div>
     <div class="card">
       <div class="card-label">Ajouter des consommations</div>
@@ -198,7 +225,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
     <div class="card">
-      <div class="card-label">Historique</div>
+      <div class="card-label">Historique de consommation</div>
       <div id="order-history"></div>
     </div>
   </div>
@@ -279,8 +306,49 @@ async function unlockBar() {
   barUnlocked = true;
   document.getElementById('access-error').style.display = 'none';
   showScreen('screen-main');
+  // Nettoie en arrière-plan les cartes soldées de plus de 24h
+  cleanupOldSoldeeCards().catch(e => console.warn('Cleanup:', e));
   renderBarList();
   document.getElementById('bar-mode-label').textContent = 'Mode bar';
+}
+
+// ════════════════════════════════════════
+// CLEANUP — supprime les cartes soldées > 24h
+// ════════════════════════════════════════
+const SOLDEE_TTL_MS = 24 * 60 * 60 * 1000; // 24 heures
+
+async function cleanupOldSoldeeCards() {
+  const now = Date.now();
+  const snap = await db.ref('cards').once('value');
+  const cards = snap.val() || {};
+  const tasks = [];
+
+  for (const [id, c] of Object.entries(cards)) {
+    const spent = calcSpent(c);
+    const isFull = spent >= c.amount;
+
+    // Cartes pleinement consommées sans timestamp (legacy ou marquage raté)
+    // → on leur attribue maintenant pour démarrer leur compte à rebours
+    if (isFull && !c.soldeeAt) {
+      tasks.push(db.ref('cards/' + id + '/soldeeAt').set(now));
+      continue;
+    }
+
+    // Cartes soldées depuis plus de 24h → suppression définitive
+    if (c.soldeeAt && (now - c.soldeeAt > SOLDEE_TTL_MS)) {
+      tasks.push((async () => {
+        // Détache la référence côté utilisateur si elle pointe encore ici
+        if (c.uid) {
+          const activeSnap = await db.ref('users/' + c.uid + '/activeCardId').once('value');
+          if (activeSnap.val() === id) {
+            await db.ref('users/' + c.uid + '/activeCardId').remove();
+          }
+        }
+        await db.ref('cards/' + id).remove();
+      })());
+    }
+  }
+  await Promise.all(tasks);
 }
 
 function lockBar() {
@@ -295,7 +363,7 @@ function lockBar() {
 
 async function unlockAdmin() {
   const pw = document.getElementById('admin-pw-input').value;
-  const real = await db.ref('config/adminPw').once('value').then(s => s.val() || 'scout2024');
+  const real = await db.ref('config/adminPw').once('value').then(s => s.val() || 'admin2024');
   if (pw !== real) { document.getElementById('admin-pw-err').style.display = 'block'; return; }
   adminUnlocked = true;
   document.getElementById('admin-lock-view').style.display = 'none';
@@ -403,9 +471,18 @@ async function renderBarList() {
   const cards = snap.val() || {};
   const el = document.getElementById('bar-list');
 
-  const filtered = Object.entries(cards).filter(([id, c]) =>
-    (c.email || '').toLowerCase().includes(q) || id.toLowerCase().includes(q)
-  );
+  const filtered = Object.entries(cards).filter(([id, c]) => {
+    // Cartes soldées (entièrement consommées) → cachées du bar
+    if (c.soldeeAt || calcSpent(c) >= c.amount) return false;
+    const hay = [
+      c.email || '',
+      c.firstname || '',
+      c.lastname || '',
+      c.displayName || '',
+      id
+    ].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
 
   if (!filtered.length) {
     el.innerHTML = '<div class="empty">Aucune carte trouvée</div>';
@@ -417,7 +494,7 @@ async function renderBarList() {
     const pct = Math.min(100, Math.round(spent / card.amount * 100));
     const full = spent >= card.amount;
     const color = full ? 'var(--danger)' : 'var(--accent)';
-    const name = card.email ? card.email.split('@')[0] : 'Anonyme';
+    const name = cardDisplayName(card);
     return `
       <div class="bar-card ${full ? 'soldee' : ''}">
         <div class="bar-card-head" onclick="openOrder('${id}')">
@@ -449,7 +526,7 @@ async function openOrder(id) {
   const card = await db.ref('cards/' + id).once('value').then(s => s.val());
   if (!card) { showToast('Carte introuvable'); return; }
 
-  const name = card.email ? card.email.split('@')[0] : id.slice(-6);
+  const name = cardDisplayName(card) || id.slice(-6);
   document.getElementById('order-title').textContent = name;
   document.getElementById('order-sub').textContent = id.slice(-8) + ' · ' + card.amount + ' €';
 
@@ -465,10 +542,22 @@ function renderOrderView(card) {
   const cartTotal = Object.entries(cart).reduce((s,[did,qty]) => {
     const d = DRINKS.find(x => x.id === did); return s + (d ? d.price * qty : 0);
   }, 0);
+  const left = Math.max(0, card.amount - spent);
   const available = card.amount - spent - cartTotal;
+  const pctLeft = card.amount > 0 ? Math.max(0, Math.min(100, (left / card.amount) * 100)) : 0;
 
-  document.getElementById('order-spent').textContent = spent.toFixed(2) + ' €';
-  document.getElementById('order-left').textContent = Math.max(0, card.amount - spent).toFixed(2) + ' €';
+  // Solde restant
+  document.getElementById('order-left').textContent = left.toFixed(2) + ' €';
+  document.getElementById('balance-sub').textContent = 'sur ' + card.amount + ' € · ' + Math.round(pctLeft) + '% restants';
+  document.getElementById('balance-fill').style.width = pctLeft + '%';
+
+  // Couleur selon le solde restant
+  const balCard = document.getElementById('balance-card');
+  balCard.classList.remove('balance-lvl-high','balance-lvl-mid','balance-lvl-low','balance-lvl-zero');
+  if (left <= 0)        balCard.classList.add('balance-lvl-zero');
+  else if (pctLeft <= 20) balCard.classList.add('balance-lvl-low');
+  else if (pctLeft <= 60) balCard.classList.add('balance-lvl-mid');
+  else                   balCard.classList.add('balance-lvl-high');
 
   document.getElementById('order-drinks').innerHTML = DRINKS.map(d => {
     const qty = cart[d.id] || 0;
@@ -536,6 +625,32 @@ async function validateCart() {
     time: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})
   });
   cart = {};
+
+  const newSpent = spent + cartTotal;
+  // Carte entièrement consommée → on la marque (sera purgée après 24h par le cleanup)
+  if (newSpent >= card.amount) {
+    try {
+      // Stoppe le listener live (la carte va disparaître de la liste bar)
+      if (liveUnsub) { liveUnsub(); liveUnsub = null; }
+      // Détache la référence "carte active" côté utilisateur
+      if (card.uid) {
+        const activeSnap = await db.ref('users/' + card.uid + '/activeCardId').once('value');
+        if (activeSnap.val() === currentCardId) {
+          await db.ref('users/' + card.uid + '/activeCardId').remove();
+        }
+      }
+      // Timestamp de soldage : utilisé pour le cleanup auto > 24h
+      await db.ref('cards/' + currentCardId + '/soldeeAt').set(Date.now());
+      showToast('Carte soldée ✓');
+      currentCardId = null;
+      setTimeout(() => showScreen('screen-main'), 1000);
+    } catch(e) {
+      console.error('Marquage soldée:', e);
+      showToast('Carte soldée');
+    }
+    return;
+  }
+
   showToast('Commande validée ✓');
 }
 
@@ -543,23 +658,39 @@ function renderHistory(card) {
   const txns = card.transactions || {};
   const el = document.getElementById('order-history');
   const entries = Object.entries(txns).sort((a,b) => b[1].ts - a[1].ts);
-  if (!entries.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">Aucune transaction</div>'; return; }
-  el.innerHTML = entries.map(([txid, tx]) => {
-    const items = Object.entries(tx.items || {}).map(([did, qty]) => {
-      const d = DRINKS.find(x => x.id === did);
-      return d ? `${qty}× ${d.label}` : '';
-    }).filter(Boolean).join(', ');
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div>
-        <div style="font-size:13px;font-weight:500">${items}</div>
-        <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${tx.time}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-family:'DM Mono',monospace;font-size:14px;color:var(--accent)">${tx.total.toFixed(2)} €</span>
-        <button onclick="askUncheck('${txid}')" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);padding:4px 8px;font-size:11px;cursor:pointer">✕</button>
-      </div>
-    </div>`;
-  }).join('');
+
+  if (!entries.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0">Aucune commande pour l\'instant</div>';
+    return;
+  }
+
+  // Total consommé global affiché en haut de l'historique
+  const total = entries.reduce((s,[,tx]) => s + (tx.total || 0), 0);
+  const count = entries.length;
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 10px;border-bottom:1px solid var(--border);margin-bottom:6px">
+      <span style="font-size:12px;color:var(--muted)">${count} commande${count>1?'s':''}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--muted)">Total : <span style="color:var(--text);font-weight:600">${total.toFixed(2)} €</span></span>
+    </div>
+    ${entries.map(([txid, tx]) => {
+      const chips = Object.entries(tx.items || {}).map(([did, qty]) => {
+        const d = DRINKS.find(x => x.id === did);
+        return d ? `<span class="item-chip"><span class="qty">${qty}×</span>${d.label}</span>` : '';
+      }).filter(Boolean).join('');
+      return `
+        <div class="tx-row">
+          <div class="tx-head">
+            <div class="tx-time">⏱ ${tx.time || '—'}</div>
+            <div class="tx-actions">
+              <span class="tx-amount">−${tx.total.toFixed(2)} €</span>
+              <button class="tx-cancel" onclick="askUncheck('${txid}')" title="Annuler cette commande">✕</button>
+            </div>
+          </div>
+          <div class="tx-items">${chips}</div>
+        </div>`;
+    }).join('')}
+  `;
 }
 
 // ════════════════════════════════════════
@@ -574,7 +705,7 @@ function askUncheck(txid) {
 
 async function confirmUncheck() {
   const pw = document.getElementById('uncheck-pw').value;
-  const real = await db.ref('config/adminPw').once('value').then(s => s.val() || 'scout2024');
+  const real = await db.ref('config/adminPw').once('value').then(s => s.val() || 'admin2024');
   if (pw !== real) { document.getElementById('uncheck-err').style.display = 'block'; return; }
   await db.ref('cards/' + currentCardId + '/transactions/' + pendingUncheck).remove();
   closeModal('modal-uncheck');
@@ -611,7 +742,7 @@ async function renderAdminStats() {
 }
 
 async function changeEventName() {
-  const cur = await db.ref('config/eventName').once('value').then(s => s.val() || 'Bal des Scouts');
+  const cur = await db.ref('config/eventName').once('value').then(s => s.val() || 'Bar Pi');
   const n = prompt('Nom de l\'événement :', cur);
   if (n) { await db.ref('config/eventName').set(n); showToast('Mis à jour ✓'); }
 }
@@ -655,6 +786,15 @@ async function doReset() {
 // ════════════════════════════════════════
 function calcSpent(card) {
   return Object.values(card.transactions || {}).reduce((s,tx) => s + (tx.total||0), 0);
+}
+
+function cardDisplayName(card) {
+  if (!card) return '';
+  if (card.displayName) return card.displayName;
+  const fn = (card.firstname || '').trim();
+  const ln = (card.lastname  || '').trim();
+  if (fn || ln) return (fn + ' ' + ln).trim();
+  return card.email ? card.email.split('@')[0] : 'Anonyme';
 }
 
 function showScreen(id) {

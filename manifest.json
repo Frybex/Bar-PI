@@ -1,7 +1,7 @@
 {
   "name": "Bar Pi",
   "short_name": "Bar Pi",
-  "description": "Ta carte boisson pour le Bar Pi",
+  "description": "Carte boisson : achète, scanne, bois.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -7,8 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Bar Scout">
-<title>Bar Scout</title>
+<meta name="apple-mobile-web-app-title" content="Bar Pi">
+<title>Bar Pi</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -91,7 +91,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div id="screen-login" class="screen">
   <div class="center-screen">
     <div class="logo">🍺</div>
-    <div class="big-title">Bar Scout</div>
+    <div class="big-title">Bar Pi</div>
     <div class="sub-text">Crée ta carte boisson et suis ton solde en direct.</div>
     <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:0">
       <div id="login-step1">
@@ -101,6 +101,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             style="flex:1;padding:9px;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;background:var(--accent);color:#fff;font-family:'DM Sans',sans-serif;transition:.15s">Connexion</button>
           <button id="tab-signup" onclick="setLoginMode('signup')"
             style="flex:1;padding:9px;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.15s">Créer un compte</button>
+        </div>
+
+        <!-- Champs prénom + nom (uniquement en mode signup) -->
+        <div id="signup-name-fields" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input class="inp" type="text" id="firstname-input" placeholder="Prénom" autocomplete="given-name" />
+            <input class="inp" type="text" id="lastname-input" placeholder="Nom" autocomplete="family-name" />
+          </div>
         </div>
 
         <input class="inp" type="email" id="email-input" placeholder="ton@email.com" autocomplete="email" />
@@ -119,7 +127,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <!-- ══ SCREEN: HOME (connecté, pas encore de carte) ══ -->
 <div id="screen-home" class="screen">
   <div class="header">
-    <div><h1>Bar Scout 🍺</h1><div class="sub" id="home-event-name">Bal des Scouts</div></div>
+    <div><h1>Bar Pi 🍺</h1><div class="sub" id="home-event-name">Bar Pi</div></div>
     <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="logout()">Déconnexion</button>
   </div>
   <div class="content">
@@ -320,12 +328,13 @@ let loginMode = 'signin';
 
 function setLoginMode(mode) {
   loginMode = mode;
-  const tabSignin = document.getElementById('tab-signin');
-  const tabSignup = document.getElementById('tab-signup');
-  const btn       = document.getElementById('login-btn');
-  const forgot    = document.getElementById('forgot-link');
-  const pwInp     = document.getElementById('password-input');
-  const errEl     = document.getElementById('login-error');
+  const tabSignin   = document.getElementById('tab-signin');
+  const tabSignup   = document.getElementById('tab-signup');
+  const btn         = document.getElementById('login-btn');
+  const forgot      = document.getElementById('forgot-link');
+  const pwInp       = document.getElementById('password-input');
+  const errEl       = document.getElementById('login-error');
+  const nameFields  = document.getElementById('signup-name-fields');
   errEl.style.display = 'none';
 
   if (mode === 'signup') {
@@ -337,6 +346,7 @@ function setLoginMode(mode) {
     pwInp.setAttribute('autocomplete', 'new-password');
     pwInp.setAttribute('placeholder', 'Choisis un mot de passe (min 6 car.)');
     forgot.style.display = 'none';
+    nameFields.style.display = 'block';
   } else {
     tabSignin.style.background = 'var(--accent)';
     tabSignin.style.color = '#fff';
@@ -346,6 +356,7 @@ function setLoginMode(mode) {
     pwInp.setAttribute('autocomplete', 'current-password');
     pwInp.setAttribute('placeholder', 'Mot de passe');
     forgot.style.display = '';
+    nameFields.style.display = 'none';
   }
 }
 
@@ -390,10 +401,29 @@ async function loginSubmit() {
     return;
   }
 
+  // En mode signup : prénom + nom obligatoires
+  let firstname = '', lastname = '';
+  if (loginMode === 'signup') {
+    firstname = document.getElementById('firstname-input').value.trim();
+    lastname  = document.getElementById('lastname-input').value.trim();
+    if (!firstname || !lastname) {
+      errEl.textContent = 'Entre ton prénom et ton nom.';
+      errEl.style.display = 'block';
+      return;
+    }
+  }
+
   btn.disabled = true;
   try {
     if (loginMode === 'signup') {
-      await auth.createUserWithEmailAndPassword(email, pw);
+      const cred = await auth.createUserWithEmailAndPassword(email, pw);
+      // Met à jour le displayName Firebase ("Prénom Nom")
+      await cred.user.updateProfile({ displayName: firstname + ' ' + lastname });
+      // Sauvegarde aussi le profil détaillé en BDD pour pouvoir requêter par prénom/nom
+      await db.ref('users/' + cred.user.uid + '/profile').set({
+        firstname, lastname, email,
+        createdAt: new Date().toISOString()
+      });
     } else {
       await auth.signInWithEmailAndPassword(email, pw);
     }
@@ -439,7 +469,7 @@ async function loadUserState() {
   document.getElementById('wallet-email-display').textContent = currentUser.email;
 
   const eventSnap = await db.ref('config/eventName').once('value');
-  const eventName = eventSnap.val() || 'Bal des Scouts';
+  const eventName = eventSnap.val() || 'Bar Pi';
   document.getElementById('home-event-name').textContent = eventName;
 
   if (activeCardId) {
@@ -448,6 +478,8 @@ async function loadUserState() {
       showQR(activeCardId, cardSnap.val());
       return;
     }
+    // Référence orpheline → on nettoie
+    await db.ref('users/' + currentUser.uid + '/activeCardId').remove();
   }
 
   await renderWallet();
@@ -512,7 +544,7 @@ function loadSumUp() {
           amount: selectedAmount,
           currency: 'EUR',
           merchant_code: SUMUP_MERCHANT_CODE,
-          description: 'Carte boisson Bar Scout ' + selectedAmount + '€'
+          description: 'Carte boisson Bar Pi ' + selectedAmount + '€'
         })
       });
       const checkout = await checkoutRes.json();
@@ -539,9 +571,17 @@ async function simulatePaymentSuccess() {
 
 async function onPaymentSuccess(checkoutId) {
   showToast('Paiement validé ✓');
+  // Récupère le profil (prénom/nom) pour l'associer à la carte
+  const profSnap = await db.ref('users/' + currentUser.uid + '/profile').once('value');
+  const prof = profSnap.val() || {};
   const card = {
     uid: currentUser.uid,
     email: currentUser.email,
+    firstname: prof.firstname || '',
+    lastname:  prof.lastname  || '',
+    displayName: (prof.firstname || prof.lastname)
+      ? ((prof.firstname || '') + ' ' + (prof.lastname || '')).trim()
+      : (currentUser.displayName || (currentUser.email || '').split('@')[0]),
     amount: selectedAmount,
     transactions: {},
     checkoutId,
@@ -561,8 +601,17 @@ async function onPaymentSuccess(checkoutId) {
 // ════════════════════════════════════════
 // QR CODE
 // ════════════════════════════════════════
+function cardDisplayName(card) {
+  if (!card) return '';
+  if (card.displayName) return card.displayName;
+  const fn = (card.firstname || '').trim();
+  const ln = (card.lastname  || '').trim();
+  if (fn || ln) return (fn + ' ' + ln).trim();
+  return card.email ? card.email.split('@')[0] : '';
+}
+
 function showQR(cardId, card) {
-  document.getElementById('qr-name').textContent = card.email ? card.email.split('@')[0] : '';
+  document.getElementById('qr-name').textContent = cardDisplayName(card);
   document.getElementById('qr-amount').textContent = card.amount + ' €';
   document.getElementById('qr-id-display').textContent = cardId;
 
@@ -577,7 +626,21 @@ function showQR(cardId, card) {
 
   // Écoute les changements en live
   db.ref('cards/' + cardId).on('value', snap => {
-    if (snap.val()) updateQRInfo(cardId, snap.val());
+    const card = snap.val();
+    if (!card) {
+      // Carte purgée par le cleanup 24h → retour silencieux à l'accueil
+      db.ref('cards/' + cardId).off();
+      loadUserState();
+      return;
+    }
+    updateQRInfo(cardId, card);
+    // Carte vient d'être soldée par le bar → on bascule vers le wallet
+    const spent = calcSpent(card);
+    if (spent >= card.amount || card.soldeeAt) {
+      db.ref('cards/' + cardId).off();
+      showToast('Carte soldée 🎉');
+      setTimeout(() => loadUserState(), 1500);
+    }
   });
 }
 
@@ -610,7 +673,7 @@ async function renderWallet() {
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer" onclick="showQRForCard('${id}')">
           <div>
-            <div style="font-size:15px;font-weight:600">${card.email ? card.email.split('@')[0] : 'Ma carte'}</div>
+            <div style="font-size:15px;font-weight:600">${cardDisplayName(card) || 'Ma carte'}</div>
             <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${card.createdTime} · ${id.slice(-6)}</div>
           </div>
           <div style="text-align:right">
@@ -634,10 +697,13 @@ async function renderWallet() {
   // Écoute live pour chaque carte
   Object.keys(cards).forEach(id => {
     db.ref('cards/' + id).on('value', snap => {
-      if (!snap.val()) return;
+      if (!snap.val()) {
+        // Carte supprimée → on rafraîchit la liste
+        db.ref('cards/' + id).off();
+        renderWallet();
+        return;
+      }
       const card = snap.val();
-      const spent = calcSpent(card);
-      const left  = Math.max(0, card.amount - spent);
       const el2 = document.getElementById('conso-' + id);
       if (el2) el2.innerHTML = renderConsoList(card);
     });

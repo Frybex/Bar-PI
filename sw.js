@@ -1,11 +1,11 @@
 // ════════════════════════════════════════
-// SERVICE WORKER — Bar Scout
+// SERVICE WORKER — Bar Pi
 // Stratégies :
 //   - HTML & JS locaux  → NETWORK-FIRST (toujours la dernière version)
 //   - Reste (icônes, fonts, libs CDN)  → STALE-WHILE-REVALIDATE
 //   - Firebase auth/db  → bypass complet (jamais en cache)
 // ════════════════════════════════════════
-const CACHE = 'bar-scout-v3';
+const CACHE = 'bar-pi-v1';
 const CORE_ASSETS = [
   './',
   './index.html',
