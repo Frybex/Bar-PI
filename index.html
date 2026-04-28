@@ -736,6 +736,7 @@ function loadSumUp() {
   };
   script.onload = async () => {
     try {
+      const amountFormatted = parseFloat(selectedAmount).toFixed(2);
       const checkoutRes = await fetch('https://api.sumup.com/v0.1/checkouts', {
         method: 'POST',
         headers: {
@@ -744,17 +745,19 @@ function loadSumUp() {
         },
         body: JSON.stringify({
           checkout_reference: 'CARD_' + Date.now(),
-          amount: selectedAmount,
+          amount: parseFloat(amountFormatted),
           currency: 'EUR',
           merchant_code: SUMUP_MERCHANT_CODE,
-          description: 'Carte boisson Bar Pi ' + selectedAmount + '€'
+          description: 'Carte boisson Bar Pi ' + amountFormatted + '€'
         })
       });
       const checkout = await checkoutRes.json();
-      console.log('SumUp checkout response:', checkout);
+      console.log('SumUp checkout response (HTTP ' + checkoutRes.status + '):', JSON.stringify(checkout));
 
       if (!checkout.id) {
-        console.error('SumUp checkout error:', checkout);
+        const msg = checkout.message || checkout.error_message || checkout.error || JSON.stringify(checkout);
+        console.error('SumUp checkout error:', msg);
+        showToast('Erreur SumUp : ' + msg);
         container.style.display = 'none';
         fallback.style.display = 'block';
         return;
@@ -765,12 +768,14 @@ function loadSumUp() {
       SumUpCard.mount({
         id: checkout.id,
         onResponse: (type, body) => {
+          console.log('SumUp onResponse:', type, body);
           if (type === 'success') onPaymentSuccess(checkout.id);
           else if (type === 'error') showToast('Paiement refusé — réessaie');
         }
       });
     } catch(e) {
       console.error('SumUp error:', e);
+      showToast('Erreur réseau SumUp : ' + e.message);
       container.style.display = 'none';
       fallback.style.display = 'block';
     }
