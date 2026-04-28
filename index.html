@@ -763,10 +763,11 @@ function loadSumUp() {
         return;
       }
 
-      container.innerHTML = `<div id="${checkout.id}"></div>`;
+      container.innerHTML = `<div id="sumup-card"></div>`;
 
       SumUpCard.mount({
-        id: checkout.id,
+        id: 'sumup-card',
+        checkoutId: checkout.id,
         onResponse: (type, body) => {
           console.log('SumUp onResponse:', type, body);
           if (type === 'success') onPaymentSuccess(checkout.id);
