@@ -53,11 +53,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .qr-info .big-name{font-size:26px;font-weight:700;margin-bottom:4px}
 .qr-info .big-amount{font-size:44px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)}
 .qr-info .qr-id{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:6px}
-.badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'DM Mono',monospace}
-.badge-5{background:rgba(34,201,122,.15);color:var(--success)}
-.badge-10{background:rgba(124,111,247,.15);color:var(--accent)}
-.badge-15{background:rgba(240,160,48,.15);color:var(--warning)}
-.badge-20{background:rgba(232,85,85,.15);color:var(--danger)}
+.badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'DM Mono',monospace;background:rgba(124,111,247,.15);color:var(--accent)}
+.badge-5,.badge-10,.badge-15,.badge-20{background:rgba(124,111,247,.15);color:var(--accent)}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;transition:.25s;z-index:300;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .center-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;gap:16px;text-align:center}
@@ -89,7 +86,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* ── Carte épuisée dans le wallet ── */
 .wallet-card-empty{position:relative;border:2px solid var(--danger) !important;background:linear-gradient(135deg,rgba(232,85,85,.15) 0%,rgba(232,85,85,.05) 100%) !important}
-.wallet-card-empty::after{content:"ÉPUISÉE";position:absolute;top:10px;right:10px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;font-family:'DM Mono',monospace;letter-spacing:1px;z-index:2}
 .wallet-card-empty .wallet-name{opacity:.6}
 </style>
 </head>
@@ -129,7 +125,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
         <input class="inp" type="email" id="email-input" placeholder="ton@email.com" autocomplete="email" />
         <input class="inp" type="password" id="password-input" placeholder="Choisis un mot de passe (min 6 car.)" autocomplete="new-password" />
-        <button class="btn btn-primary" id="login-btn" onclick="loginSubmit()">Créer mon compte →</button>
+        <button class="btn btn-primary" id="login-btn" onclick="loginSubmit()">Créer mon compte</button>
         <div id="login-error" style="font-size:12px;color:var(--danger);margin-top:8px;display:none"></div>
 
         <div style="text-align:center;margin-top:14px">
@@ -159,18 +155,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="card">
       <div class="card-label">Acheter une carte boisson</div>
-      <div class="amount-grid">
-        <button class="amount-btn" onclick="selectAmount(5)"  id="a5">5 €</button>
-        <button class="amount-btn" onclick="selectAmount(10)" id="a10">10 €</button>
-        <button class="amount-btn" onclick="selectAmount(15)" id="a15">15 €</button>
-        <button class="amount-btn" onclick="selectAmount(20)" id="a20">20 €</button>
-      </div>
-      <button class="btn btn-primary" id="buy-btn" onclick="startPurchase()" disabled>Payer</button>
+      <div class="amount-grid" id="amount-grid"></div>
+      <button class="btn btn-primary" id="buy-btn" onclick="startPurchase()" disabled>Acheter</button>
       <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Paiement sécurisé via SumUp</div>
     </div>
+    <button onclick="openTarifs()" style="width:100%;padding:11px;border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;margin-bottom:12px">Voir les tarifs des boissons</button>
     <div class="card" style="font-size:13px;color:var(--muted);line-height:1.7">
       <div class="card-label">Comment ça marche</div>
-      1. Choisis ton montant et paie en ligne<br>
+      1. Choisis ton montant et paie en ligne ou au bar<br>
       2. Reçois ton QR code instantanément<br>
       3. Présente-le au bar pour tes conso<br>
       4. Suis ton solde ici en temps réel
@@ -221,7 +213,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         💵 <strong>Paiement en cash</strong><br>
         Présente-toi au bar pour régler ton montant. Une fois validé par l'équipe, ta carte apparaîtra automatiquement ici.
       </div>
-      <button class="btn btn-primary" onclick="submitCashRequest()">Envoyer la demande →</button>
+      <button class="btn btn-primary" onclick="submitCashRequest()">Envoyer la demande</button>
     </div>
   </div>
 </div>
@@ -253,6 +245,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="empty-card-amount">0,00 €</div>
       <div class="empty-card-meta">Tu as bu pour <strong id="empty-card-spent">— €</strong></div>
     </div>
+    <div id="empty-card-history" style="margin-bottom:16px"></div>
     <button class="btn btn-primary" style="font-size:17px;padding:18px;margin-bottom:10px" onclick="showScreen('screen-home')">🍺 Acheter une nouvelle carte</button>
     <button class="btn btn-outline" onclick="showScreen('screen-wallet')">Voir mes cartes</button>
   </div>
@@ -262,7 +255,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div id="screen-qr" class="screen">
   <div class="header">
     <div><h1>Ma carte 🎉</h1><div class="sub">Présente ce QR au bar</div></div>
-    <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="showScreen('screen-wallet')">Solde →</button>
+    <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="showScreen('screen-wallet')">Mes cartes</button>
   </div>
   <div class="qr-wrap">
     <div class="qr-info">
@@ -275,6 +268,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div style="font-size:13px;color:var(--muted);text-align:center;max-width:260px;line-height:1.6">
       Montre ce QR code au bar. Le barman cochera tes consommations dessus.
     </div>
+    <button onclick="openTarifs()" style="margin-top:14px;background:none;border:none;font-size:14px;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px;display:block;margin-left:auto;margin-right:auto">Voir les tarifs des boissons</button>
+    <div id="qr-history" style="width:100%;max-width:360px;margin-top:8px"></div>
   </div>
 </div>
 
@@ -282,11 +277,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div id="screen-wallet" class="screen">
   <div class="header">
     <div><h1>Mes cartes</h1><div class="sub" id="wallet-email-display"></div></div>
-    <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="logout()">Déco</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="openTarifs()">Tarifs</button>
+      <button class="btn-sm btn-outline" style="padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:none;cursor:pointer;color:var(--muted)" onclick="logout()">Déco</button>
+    </div>
   </div>
   <div class="content">
     <div id="wallet-list"></div>
     <button class="btn btn-primary" onclick="showScreen('screen-home')" style="margin-top:4px">+ Acheter une nouvelle carte</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-tarifs" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:flex-end;justify-content:center;padding:0" onclick="if(event.target===this)closeTarifs()">
+  <div style="background:var(--bg2);border-radius:var(--r) var(--r) 0 0;padding:24px;width:100%;max-width:430px;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:18px;font-weight:700">Tarifs</h2>
+      <button onclick="closeTarifs()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Consommations</div>
+    <div id="tarifs-drinks"></div>
   </div>
 </div>
 
@@ -323,12 +332,20 @@ const APP_URL = window.location.origin + window.location.pathname;
 // ════════════════════════════════════════
 let auth, db;
 
-const DRINKS = [
+const DRINKS_DEFAULT = [
   {id:'soda',label:'Soda',price:1},{id:'eau',label:'Eau',price:0.5},
   {id:'biere',label:'Bière',price:2},{id:'vin',label:'Vin',price:2},
   {id:'jus',label:'Jus',price:1},{id:'cocktail',label:'Cocktail',price:3},
   {id:'cafe',label:'Café',price:1},{id:'shot',label:'Shot',price:2},
 ];
+let DRINKS = [...DRINKS_DEFAULT];
+
+async function loadDrinks() {
+  const snap = await db.ref('config/drinks').once('value');
+  const val = snap.val();
+  if (Array.isArray(val) && val.length) DRINKS = val;
+  else DRINKS = [...DRINKS_DEFAULT];
+}
 
 let currentUser = null;
 let selectedAmount = null;
@@ -420,7 +437,7 @@ function setLoginMode(mode) {
     tabSignup.style.color = '#fff';
     tabSignin.style.background = 'transparent';
     tabSignin.style.color = 'var(--muted)';
-    btn.textContent = 'Créer mon compte →';
+    btn.textContent = 'Créer mon compte';
     pwInp.setAttribute('autocomplete', 'new-password');
     pwInp.setAttribute('placeholder', 'Choisis un mot de passe (min 6 car.)');
     forgot.style.display = 'none';
@@ -430,7 +447,7 @@ function setLoginMode(mode) {
     tabSignin.style.color = '#fff';
     tabSignup.style.background = 'transparent';
     tabSignup.style.color = 'var(--muted)';
-    btn.textContent = 'Se connecter →';
+    btn.textContent = 'Se connecter';
     pwInp.setAttribute('autocomplete', 'current-password');
     pwInp.setAttribute('placeholder', 'Mot de passe');
     forgot.style.display = '';
@@ -545,7 +562,8 @@ async function loadUserState() {
 
   const [eventSnap, pendingReqIdSnap] = await Promise.all([
     db.ref('config/eventName').once('value'),
-    db.ref('users/' + currentUser.uid + '/pendingRequestId').once('value')
+    db.ref('users/' + currentUser.uid + '/pendingRequestId').once('value'),
+    loadDrinks()
   ]);
   const eventName = eventSnap.val() || 'Bar Pi';
   document.getElementById('home-event-name').textContent = eventName;
@@ -593,19 +611,44 @@ async function loadUserState() {
   await renderWallet();
   const cardsSnap = await db.ref('cards').orderByChild('uid').equalTo(currentUser.uid).once('value');
   const cards = cardsSnap.val();
-  if (cards && Object.keys(cards).length > 0) {
-    showScreen('screen-wallet');
-  } else {
+  if (!cards || Object.keys(cards).length === 0) {
     showScreen('screen-home');
+  } else if (Object.keys(cards).length === 1) {
+    // Une seule carte → ouvrir directement
+    const [[cardId, cardData]] = Object.entries(cards);
+    const isFull = cardData.soldeeAt || calcSpent(cardData) >= cardData.amount;
+    if (isFull) showCardEmptyScreen(cardData);
+    else showQR(cardId, cardData);
+  } else {
+    showScreen('screen-wallet');
   }
 }
 
 // ════════════════════════════════════════
 // ACHETER
 // ════════════════════════════════════════
+let cardAmounts = [5, 10, 15, 20];
+
+async function loadAndRenderAmounts() {
+  const snap = await db.ref('config/cardAmounts').once('value');
+  const val = snap.val();
+  if (Array.isArray(val) && val.length) cardAmounts = val.map(Number).sort((a,b) => a-b);
+  else cardAmounts = [5, 10, 15, 20];
+  const grid = document.getElementById('amount-grid');
+  if (!grid) return;
+  grid.innerHTML = cardAmounts.map(a =>
+    `<button class="amount-btn" id="a${a}" onclick="selectAmount(${a})">${a} €</button>`
+  ).join('');
+  selectedAmount = null;
+  document.getElementById('buy-btn').disabled = true;
+}
+
 function selectAmount(a) {
   selectedAmount = a;
-  [5,10,15,20].forEach(v => document.getElementById('a'+v).classList.toggle('sel', v===a));
+  cardAmounts.forEach(v => {
+    const el = document.getElementById('a' + v);
+    if (el) el.classList.toggle('sel', v === a);
+  });
   document.getElementById('buy-btn').disabled = false;
 }
 
@@ -768,6 +811,9 @@ function loadSumUp() {
       SumUpCard.mount({
         id: 'sumup-card',
         checkoutId: checkout.id,
+        locale: 'fr-FR',
+        country: 'BE',
+        showSubmitButton: true,
         onResponse: (type, body) => {
           console.log('SumUp onResponse:', type, body);
           if (type === 'success') onPaymentSuccess(checkout.id);
@@ -827,13 +873,54 @@ function cardDisplayName(card) {
   return card.email ? card.email.split('@')[0] : '';
 }
 
+function renderQRHistory(card) {
+  const el = document.getElementById('qr-history');
+  if (!el) return;
+  const txns = card.transactions || {};
+  const entries = Object.entries(txns).sort((a, b) => a[1].ts - b[1].ts);
+  if (!entries.length) { el.innerHTML = ''; return; }
+
+  // Palette de couleurs qui tourne par passage
+  const palettes = [
+    'background:rgba(124,111,247,.18);color:#a89ff8',   // violet
+    'background:rgba(34,201,122,.18);color:#22c97a',    // vert
+    'background:rgba(240,160,48,.18);color:#f0a030',    // orange
+    'background:rgba(232,85,85,.18);color:#e85555',     // rouge
+    'background:rgba(56,189,248,.18);color:#38bdf8',    // bleu
+  ];
+
+  const total = entries.reduce((s, [, tx]) => s + (tx.total || 0), 0);
+
+  const rows = entries.map(([, tx], i) => {
+    const pal = palettes[i % palettes.length];
+    const chips = Object.entries(tx.items || {}).map(([did, qty]) => {
+      const d = DRINKS.find(x => x.id === did);
+      return d ? `<span style="${pal};border-radius:20px;padding:4px 10px;font-size:12px;font-weight:500;white-space:nowrap">${qty}× ${d.label}</span>` : '';
+    }).filter(Boolean).join('');
+    return `
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px">${tx.time || ''} &nbsp;·&nbsp; −${tx.total.toFixed(2)} €</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">${chips}</div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="margin-top:12px;padding-top:14px;border-top:1px solid var(--border)">
+      ${rows}
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:10px;border-top:1px solid var(--border);margin-top:4px">
+        <span style="color:var(--muted)">Total consommé</span>
+        <span style="font-family:'DM Mono',monospace;font-weight:600">${total.toFixed(2)} €</span>
+      </div>
+    </div>`;
+}
+
 function showQR(cardId, card) {
   document.getElementById('qr-name').textContent = cardDisplayName(card);
-  // Au-dessus du QR : on affiche le SOLDE RESTANT (pas la valeur initiale de la carte)
   const initialSpent = calcSpent(card);
   const initialLeft  = Math.max(0, card.amount - initialSpent);
   document.getElementById('qr-amount').textContent = initialLeft.toFixed(2) + ' €';
   document.getElementById('qr-id-display').textContent = cardId;
+  renderQRHistory(card);
 
   const el = document.getElementById('qr-code-el');
   el.innerHTML = '';
@@ -866,15 +953,48 @@ function showQR(cardId, card) {
 function updateQRInfo(cardId, card) {
   const spent = calcSpent(card);
   const left  = Math.max(0, card.amount - spent);
-  // Met à jour le solde affiché au-dessus du QR en temps réel
   const amtEl = document.getElementById('qr-amount');
   if (amtEl) amtEl.textContent = left.toFixed(2) + ' €';
+  renderQRHistory(card);
 }
 
 function showCardEmptyScreen(card) {
   document.getElementById('empty-card-name').textContent = cardDisplayName(card) || '';
   const spent = calcSpent(card);
   document.getElementById('empty-card-spent').textContent = spent.toFixed(2) + ' €';
+
+  // Historique des consommations (même style que l'écran QR)
+  const histEl = document.getElementById('empty-card-history');
+  const txns = card.transactions || {};
+  const entries = Object.entries(txns).sort((a, b) => a[1].ts - b[1].ts);
+  if (!entries.length) {
+    histEl.innerHTML = '';
+  } else {
+    const palettes = [
+      'background:rgba(124,111,247,.18);color:#a89ff8',
+      'background:rgba(34,201,122,.18);color:#22c97a',
+      'background:rgba(240,160,48,.18);color:#f0a030',
+      'background:rgba(232,85,85,.18);color:#e85555',
+      'background:rgba(56,189,248,.18);color:#38bdf8',
+    ];
+    const rows = entries.map(([, tx], i) => {
+      const pal = palettes[i % palettes.length];
+      const chips = Object.entries(tx.items || {}).map(([did, qty]) => {
+        const d = DRINKS.find(x => x.id === did);
+        return d ? `<span style="${pal};border-radius:20px;padding:4px 10px;font-size:12px;font-weight:500;white-space:nowrap">${qty}× ${d.label}</span>` : '';
+      }).filter(Boolean).join('');
+      return `
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">${tx.time || ''} &nbsp;·&nbsp; −${tx.total.toFixed(2)} €</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">${chips}</div>
+        </div>`;
+    }).join('');
+    histEl.innerHTML = `
+      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+        ${rows}
+      </div>`;
+  }
+
   showScreen('screen-card-empty');
 }
 
@@ -895,37 +1015,59 @@ async function renderWallet() {
     return;
   }
 
-  el.innerHTML = Object.entries(cards).reverse().map(([id, card]) => {
+  function buildCardHTML(id, card, isFull) {
     const spent = calcSpent(card);
     const left  = Math.max(0, card.amount - spent);
     const pct   = Math.min(100, Math.round(spent / card.amount * 100));
-    const full  = spent >= card.amount || card.soldeeAt;
-    const color = full ? 'var(--danger)' : 'var(--accent)';
-    const wrapClass = full ? 'wallet-card-empty' : '';
+    const color = isFull ? 'var(--danger)' : 'var(--accent)';
+    const wrapClass = isFull ? 'wallet-card-empty' : '';
+    const clickFn = isFull ? `showEmptyCard('${id}')` : `showQRForCard('${id}')`;
     return `
-      <div class="${wrapClass}" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;position:relative">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer" onclick="${full ? '' : "showQRForCard('"+id+"')"}">
+      <div class="${wrapClass}" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden;position:relative;cursor:pointer" onclick="${clickFn}">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
           <div>
             <div class="wallet-name" style="font-size:15px;font-weight:600">${cardDisplayName(card) || 'Ma carte'}</div>
             <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${card.createdTime} · ${id.slice(-6)}</div>
           </div>
           <div style="text-align:right">
-            <span class="badge badge-${card.amount}">${card.amount} €</span>
-            <div style="font-size:12px;color:${full?'var(--danger)':'var(--muted)'};font-family:'DM Mono',monospace;margin-top:4px;font-weight:${full?'700':'400'}">${full ? '0,00 € restant' : left.toFixed(2) + ' € restant'}</div>
+            <span class="badge badge-${card.amount}" style="${isFull?'background:rgba(232,85,85,.15);color:var(--danger)':''}">${card.amount} €</span>
+            <div style="font-size:12px;color:${isFull?'var(--danger)':'var(--muted)'};font-family:'DM Mono',monospace;margin-top:4px;font-weight:${isFull?'700':'400'}">${isFull ? '0,00 € restant' : left.toFixed(2) + ' € restant'}</div>
           </div>
         </div>
         <div style="padding:0 16px 14px;display:flex;align-items:center;gap:10px">
           <div style="flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
             <div style="width:${pct}%;height:100%;background:${color};border-radius:2px;transition:width .4s"></div>
           </div>
-          <span style="font-size:11px;color:${full?'var(--danger)':'var(--muted)'};font-family:'DM Mono',monospace;white-space:nowrap;font-weight:${full?'700':'400'}">${pct}%${full?' ÉPUISÉE':''}</span>
+          <span style="font-size:11px;color:${isFull?'var(--danger)':'var(--muted)'};font-family:'DM Mono',monospace;white-space:nowrap;font-weight:${isFull?'700':'400'}">${pct}%${isFull?' ÉPUISÉE':''}</span>
         </div>
         <div style="padding:0 16px 14px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Consommations :</div>
           <div id="conso-${id}">${renderConsoList(card)}</div>
         </div>
       </div>`;
-  }).join('');
+  }
+
+  const entries = Object.entries(cards).reverse();
+  const activeCards = entries.filter(([, c]) => calcSpent(c) < c.amount && !c.soldeeAt);
+  const emptyCards  = entries.filter(([, c]) => calcSpent(c) >= c.amount || c.soldeeAt);
+
+  let html = activeCards.map(([id, card]) => buildCardHTML(id, card, false)).join('');
+
+  if (emptyCards.length > 0) {
+    const startOpen = activeCards.length === 0;
+    html += `
+      <div style="margin-top:${activeCards.length > 0 ? '20px' : '0'}">
+        <div onclick="toggleEmptyCards(this)" style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 10px;cursor:pointer;user-select:none">
+          <span style="font-size:13px;font-weight:600;color:var(--muted)">Cartes vides (${emptyCards.length})</span>
+          <span style="font-size:13px;color:var(--muted);transition:transform .2s;display:inline-block;transform:rotate(${startOpen?'0':'-90'}deg)">▾</span>
+        </div>
+        <div id="empty-cards-list" style="display:${startOpen?'block':'none'}">
+          ${emptyCards.map(([id, card]) => buildCardHTML(id, card, true)).join('')}
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = html || '<div class="empty">Aucune carte pour l\'instant.<br>Achète ta première carte !</div>';
 
   // Écoute live pour chaque carte (avec nettoyage propre)
   Object.keys(cards).forEach(id => {
@@ -967,6 +1109,20 @@ async function showQRForCard(cardId) {
   if (snap.val()) showQR(cardId, snap.val());
 }
 
+async function showEmptyCard(cardId) {
+  const snap = await db.ref('cards/' + cardId).once('value');
+  const card = snap.val();
+  if (card) showCardEmptyScreen(card);
+}
+
+function toggleEmptyCards(headerEl) {
+  const list = document.getElementById('empty-cards-list');
+  const chevron = headerEl.querySelector('span:last-child');
+  const isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'block';
+  chevron.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
 // ════════════════════════════════════════
 // UTILS
 // ════════════════════════════════════════
@@ -978,6 +1134,21 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (id === 'screen-wallet') renderWallet();
+  if (id === 'screen-home') loadAndRenderAmounts();
+}
+
+function openTarifs() {
+  document.getElementById('tarifs-drinks').innerHTML = DRINKS.map(d =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:15px;font-weight:500">${d.label}</span>
+      <span style="font-size:15px;font-family:'DM Mono',monospace;color:var(--accent);font-weight:600">${d.price.toFixed(2)} €</span>
+    </div>`
+  ).join('');
+  document.getElementById('modal-tarifs').style.display = 'flex';
+}
+
+function closeTarifs() {
+  document.getElementById('modal-tarifs').style.display = 'none';
 }
 
 function showToast(msg) {

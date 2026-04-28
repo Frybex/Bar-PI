@@ -1,0 +1,34 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      ".git/**",
+      ".github/**",
+      ".claude/**",
+      ".DS_Store",
+      "**/.DS_Store",
+      "**/node_modules/**",
+      "GUIDE-v2.md",
+      "README.md"
+    ],
+    "headers": [
+      {
+        "source": "/.well-known/apple-developer-merchantid-domain-association",
+        "headers": [
+          { "key": "Content-Type", "value": "text/plain" },
+          { "key": "Cache-Control", "value": "public, max-age=300" }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      }
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false
+  }
+}

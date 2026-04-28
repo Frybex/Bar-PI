@@ -39,11 +39,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .stat-box{background:var(--bg3);border-radius:var(--r-sm);padding:14px 12px}
 .stat-val{font-size:24px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text)}
 .stat-lbl{font-size:11px;color:var(--muted);margin-top:3px}
-.badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'DM Mono',monospace}
-.badge-5{background:rgba(34,201,122,.15);color:var(--success)}
-.badge-10{background:rgba(124,111,247,.15);color:var(--accent)}
-.badge-15{background:rgba(240,160,48,.15);color:var(--warning)}
-.badge-20{background:rgba(232,85,85,.15);color:var(--danger)}
+.badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'DM Mono',monospace;background:rgba(124,111,247,.15);color:var(--accent)}
+.badge-5,.badge-10,.badge-15,.badge-20{background:rgba(124,111,247,.15);color:var(--accent)}
 .bar-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
 .bar-card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer}
 .drinks-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
@@ -120,6 +117,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .tx-items{display:flex;flex-wrap:wrap;gap:5px}
 .item-chip{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:4px 10px;font-size:12px;color:var(--text);font-weight:500;display:inline-flex;align-items:center;gap:5px}
 .item-chip .qty{color:var(--accent);font-family:'DM Mono',monospace;font-weight:600}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
 </style>
 </head>
 <body>
@@ -133,7 +133,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div style="width:100%;max-width:300px">
       <input type="password" class="inp" id="access-code" placeholder="Code d'accès" style="text-align:center;font-size:18px;letter-spacing:4px" />
       <div id="access-error" style="font-size:12px;color:var(--danger);margin-bottom:10px;display:none">Code incorrect</div>
-      <button class="btn btn-primary" onclick="unlockBar()">Accéder →</button>
+      <button class="btn btn-primary" onclick="unlockBar()">Accéder</button>
     </div>
   </div>
 </div>
@@ -204,6 +204,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       <div id="admin-stats-content"></div>
       <div class="card">
+        <div class="card-label">Consommations</div>
+        <div id="admin-drinks-list"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input class="inp" id="new-drink-label" placeholder="Nom" style="margin-bottom:0;flex:1" />
+          <div style="position:relative;width:90px;flex-shrink:0">
+            <input type="number" class="inp" id="new-drink-price" placeholder="Prix" min="0.5" step="0.5" style="margin-bottom:0;padding-right:26px" />
+            <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none">€</span>
+          </div>
+          <button class="btn btn-primary" style="width:auto;padding:0 14px;flex-shrink:0" onclick="addDrink()">+</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Valeurs de cartes</div>
+        <div id="admin-amounts-list"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <div style="position:relative;flex:1">
+            <input type="number" class="inp" id="new-amount-input" placeholder="Nouveau montant" min="1" step="1" style="margin-bottom:0;padding-right:32px" />
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none">€</span>
+          </div>
+          <button class="btn btn-primary" style="width:auto;padding:0 16px;flex-shrink:0" onclick="addCardAmount()">+ Ajouter</button>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-label">Réglages</div>
         <div class="setting-row">
           <div><div style="font-size:14px">Nom de l'événement</div></div>
@@ -254,20 +277,59 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="card">
       <div class="card-label">Historique de consommation</div>
       <div id="order-history"></div>
+      <button class="btn btn-outline" style="margin-top:12px;font-size:13px;color:var(--warning);border-color:var(--warning)" onclick="openRecredit()">↩ Recréditer la carte</button>
     </div>
+    <button onclick="askDeleteCard()" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:13px;font-family:'DM Sans',sans-serif;text-decoration:underline;text-underline-offset:3px;opacity:.7;margin-top:8px;padding:4px 0;display:block;width:100%;text-align:center">Supprimer cette carte</button>
   </div>
 </div>
 
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-uncheck">
   <div class="modal">
-    <h2>Annuler une transaction</h2>
-    <p>Mot de passe administrateur requis.</p>
-    <input type="password" class="inp" id="uncheck-pw" placeholder="Mot de passe admin" />
-    <div class="modal-error" id="uncheck-err">Mot de passe incorrect</div>
+    <h2>Annuler une commande</h2>
+    <p id="uncheck-label" style="font-size:13px;color:var(--muted)">Rembourser et supprimer cette commande ?</p>
     <div class="modal-btns">
       <button class="btn btn-outline" onclick="closeModal('modal-uncheck')">Annuler</button>
-      <button class="btn btn-danger" onclick="confirmUncheck()">Supprimer</button>
+      <button class="btn btn-danger" onclick="confirmUncheck()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-recredit">
+  <div class="modal">
+    <h2>Recréditer la carte</h2>
+    <p style="font-size:13px;color:var(--muted)">Ajoute du crédit suite à une erreur de débit.</p>
+    <div style="position:relative">
+      <input type="number" class="inp" id="recredit-amount" placeholder="Montant à recréditer" min="0.5" step="0.5" style="padding-right:32px" />
+      <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none">€</span>
+    </div>
+    <input type="password" class="inp" id="recredit-pw" placeholder="Mot de passe admin" />
+    <div class="modal-error" id="recredit-err">Mot de passe incorrect</div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeModal('modal-recredit')">Annuler</button>
+      <button class="btn btn-primary" onclick="confirmRecredit()">Recréditer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-remove-item">
+  <div class="modal">
+    <h2>Rembourser une consommation</h2>
+    <p id="remove-item-label" style="font-size:13px;color:var(--muted)"></p>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeModal('modal-remove-item')">Annuler</button>
+      <button class="btn btn-danger" onclick="confirmRemoveItem()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-delete-card">
+  <div class="modal">
+    <h2>Supprimer cette carte</h2>
+    <p style="font-size:13px;color:var(--muted)">Cette action est irréversible. La carte et tout son historique seront définitivement supprimés.</p>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="closeModal('modal-delete-card')">Annuler</button>
+      <button class="btn btn-danger" onclick="confirmDeleteCard()">Supprimer</button>
     </div>
   </div>
 </div>
@@ -308,12 +370,15 @@ const FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.database();
 
-const DRINKS = [
+const DRINKS_DEFAULT = [
   {id:'soda',label:'Soda',price:1},{id:'eau',label:'Eau',price:0.5},
   {id:'biere',label:'Bière',price:2},{id:'vin',label:'Vin',price:2},
   {id:'jus',label:'Jus',price:1},{id:'cocktail',label:'Cocktail',price:3},
   {id:'cafe',label:'Café',price:1},{id:'shot',label:'Shot',price:2},
 ];
+let DRINKS = [...DRINKS_DEFAULT];
+
+let cardAmounts = [5, 10, 15, 20];
 
 let barUnlocked = false;
 let adminUnlocked = false;
@@ -335,6 +400,7 @@ async function unlockBar() {
   if (code !== real) { document.getElementById('access-error').style.display = 'block'; return; }
   barUnlocked = true;
   document.getElementById('access-error').style.display = 'none';
+  await loadDrinks();
   showScreen('screen-main');
   startCardsListener();
   watchPendingRequests();
@@ -342,9 +408,9 @@ async function unlockBar() {
 }
 
 // ════════════════════════════════════════
-// CLEANUP — supprime les cartes soldées > 24h
+// CLEANUP — supprime les cartes soldées > 12h
 // ════════════════════════════════════════
-const SOLDEE_TTL_MS = 24 * 60 * 60 * 1000; // 24 heures
+const SOLDEE_TTL_MS = 12 * 60 * 60 * 1000; // 12 heures
 
 async function cleanupOldSoldeeCards() {
   const now = Date.now();
@@ -411,6 +477,7 @@ async function unlockAdmin() {
   adminUnlocked = true;
   document.getElementById('admin-lock-view').style.display = 'none';
   document.getElementById('admin-main-view').style.display = 'block';
+  await loadCardAmounts();
   renderAdminStats();
   renderAdminRequests();
 }
@@ -515,48 +582,104 @@ function renderBarList() {
   const cards = allCards;
   const el = document.getElementById('bar-list');
 
-  const filtered = Object.entries(cards).filter(([id, c]) => {
-    // Cartes soldées (entièrement consommées) → cachées du bar
-    if (c.soldeeAt || calcSpent(c) >= c.amount) return false;
-    const hay = [
-      c.email || '',
-      c.firstname || '',
-      c.lastname || '',
-      c.displayName || '',
-      id
-    ].join(' ').toLowerCase();
+  // Grouper les cartes actives par utilisateur
+  const userMap = {};
+  Object.entries(cards).forEach(([id, card]) => {
+    if (card.soldeeAt || calcSpent(card) >= card.amount) return; // skip cartes vides
+    const key = card.uid || card.email || cardDisplayName(card) || id;
+    if (!userMap[key]) {
+      userMap[key] = {
+        name: cardDisplayName(card),
+        email: card.email || '',
+        cards: [],
+        lastCreated: 0
+      };
+    }
+    userMap[key].cards.push([id, card]);
+    const ts = card.createdAt || 0;
+    if (ts > userMap[key].lastCreated) userMap[key].lastCreated = ts;
+  });
+
+  // Filtrer par recherche
+  const filtered = Object.entries(userMap).filter(([, user]) => {
+    const hay = [user.name, user.email].join(' ').toLowerCase();
     return hay.includes(q);
   });
 
   if (!filtered.length) {
-    el.innerHTML = '<div class="empty">Aucune carte trouvée</div>';
+    el.innerHTML = '<div class="empty">Aucun client trouvé</div>';
     return;
   }
 
-  el.innerHTML = filtered.reverse().map(([id, card]) => {
-    const spent = calcSpent(card);
-    const pct = Math.min(100, Math.round(spent / card.amount * 100));
-    const full = spent >= card.amount;
-    const color = full ? 'var(--danger)' : 'var(--accent)';
-    const name = cardDisplayName(card);
-    return `
-      <div class="bar-card ${full ? 'soldee' : ''}">
-        <div class="bar-card-head" onclick="openOrder('${id}')">
-          <div>
-            <div style="font-size:16px;font-weight:600">${name}</div>
-            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${id.slice(-8)} · ${card.createdTime}</div>
+  // Tri par date de dernière carte décroissante
+  filtered.sort((a, b) => b[1].lastCreated - a[1].lastCreated);
+
+  el.innerHTML = filtered.map(([, user]) => {
+    const totalLeft = user.cards.reduce((sum, [, c]) => sum + Math.max(0, c.amount - calcSpent(c)), 0);
+    const count = user.cards.length;
+
+    const cardsHTML = user.cards.map(([id, card]) => {
+      const spent = calcSpent(card);
+      const left  = Math.max(0, card.amount - spent);
+      const pct   = Math.min(100, Math.round(spent / card.amount * 100));
+      return `
+        <div style="padding:10px 16px;border-top:1px solid var(--border);cursor:pointer;transition:.12s" onclick="openOrder('${id}')"
+             onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background=''">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:13px;font-weight:600;color:var(--text)">Carte de ${card.amount} €</span>
+            <span style="font-size:12px;color:var(--accent);font-family:'DM Mono',monospace;font-weight:600">${left.toFixed(2)} € restant</span>
           </div>
-          <div style="text-align:right">
-            <span class="badge badge-${card.amount}">${card.amount} €</span>
-            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px">${spent.toFixed(2)} / ${card.amount} €</div>
+          <div class="progress-wrap" style="padding:0">
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:var(--accent)"></div></div>
+            <span class="progress-text">${pct}%</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Une seule carte → ouvre directement l'écran de commande
+    if (count === 1) {
+      const [[singleId]] = user.cards;
+      return `
+        <div class="bar-card" style="margin-bottom:10px;cursor:pointer" onclick="openOrder('${singleId}')">
+          <div class="bar-card-head">
+            <div>
+              <div style="font-size:16px;font-weight:600">${user.name || 'Anonyme'}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:700;color:var(--accent)">${totalLeft.toFixed(2)} €</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <div class="bar-card" style="margin-bottom:10px">
+        <div class="bar-card-head" onclick="toggleUserCards(this)">
+          <div>
+            <div style="font-size:16px;font-weight:600">${user.name || 'Anonyme'}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="text-align:right">
+              <div style="font-size:11px;color:var(--muted)">${count} cartes</div>
+              <div style="font-size:13px;font-weight:700;color:var(--accent)">${totalLeft.toFixed(2)} €</div>
+            </div>
+            <span style="font-size:16px;color:var(--muted);transition:transform .2s;display:inline-block">▾</span>
           </div>
         </div>
-        <div class="progress-wrap">
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
-          <span class="progress-text">${pct}%${full ? ' SOLDÉE' : ''}</span>
+        <div class="user-cards-list" style="display:none">
+          ${cardsHTML}
         </div>
       </div>`;
   }).join('');
+}
+
+function toggleUserCards(headerEl) {
+  const barCard = headerEl.closest('.bar-card');
+  const list    = barCard.querySelector('.user-cards-list');
+  const chevron = headerEl.querySelector('span:last-child');
+  const isOpen  = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'block';
+  chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 // ════════════════════════════════════════
@@ -589,9 +712,9 @@ function renderSoldeesList() {
             <div style="font-size:16px;font-weight:600">${name}</div>
             <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${id.slice(-8)} · soldée le ${when}</div>
           </div>
-          <div style="text-align:right">
-            <span class="badge badge-${card.amount}">${card.amount} €</span>
-            <div style="font-size:11px;color:var(--danger);font-family:'DM Mono',monospace;margin-top:3px;font-weight:700">SOLDÉE</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+            <span class="badge badge-${card.amount}" style="background:rgba(232,85,85,.15);color:var(--danger)">${card.amount} €</span>
+            <div style="font-size:11px;color:var(--danger);font-family:'DM Mono',monospace;font-weight:700">SOLDÉE</div>
           </div>
         </div>
         <div class="progress-wrap">
@@ -842,8 +965,14 @@ async function validateCart() {
     time: new Date().toLocaleTimeString('fr-BE', {hour:'2-digit', minute:'2-digit'})
   });
   cart = {};
-  renderCart();
-  // Le listener live appelle renderOrderView avec les données fraîches
+  // Mise à jour immédiate de currentCardData pour le rendu
+  const freshSnap = await db.ref('cards/' + currentCardId).once('value');
+  if (freshSnap.val()) {
+    currentCardData = freshSnap.val();
+    renderOrderView(currentCardData);
+  } else {
+    renderCart();
+  }
 
   const newSpent = spent + cartTotal;
   if (newSpent >= card.amount) {
@@ -895,7 +1024,7 @@ function renderHistory(card) {
     ${entries.map(([txid, tx]) => {
       const chips = Object.entries(tx.items || {}).map(([did, qty]) => {
         const d = DRINKS.find(x => x.id === did);
-        return d ? `<span class="item-chip"><span class="qty">${qty}×</span>${d.label}</span>` : '';
+        return d ? `<span class="item-chip"><span class="qty">${qty}×</span>${d.label}<button onclick="askRemoveItem('${txid}','${did}')" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0 0 0 4px;font-size:11px;line-height:1" title="Supprimer">✕</button></span>` : '';
       }).filter(Boolean).join('');
       return `
         <div class="tx-row">
@@ -917,15 +1046,14 @@ function renderHistory(card) {
 // ════════════════════════════════════════
 function askUncheck(txid) {
   pendingUncheck = txid;
-  document.getElementById('uncheck-pw').value = '';
-  document.getElementById('uncheck-err').style.display = 'none';
+  // Afficher le total de la commande dans le message
+  const tx = (currentCardData && currentCardData.transactions || {})[txid];
+  const label = tx ? `Rembourser et supprimer la commande de ${tx.total.toFixed(2)} € (${tx.time || ''}) ?` : 'Rembourser et supprimer cette commande ?';
+  document.getElementById('uncheck-label').textContent = label;
   document.getElementById('modal-uncheck').classList.add('open');
 }
 
 async function confirmUncheck() {
-  const pw = document.getElementById('uncheck-pw').value;
-  const real = await db.ref('config/adminPw').once('value').then(s => s.val() || 'admin2024');
-  if (pw !== real) { document.getElementById('uncheck-err').style.display = 'block'; return; }
   await db.ref('cards/' + currentCardId + '/transactions/' + pendingUncheck).remove();
   // Si la carte était soldée mais redevient utilisable après l'uncheck → on la "réveille"
   const refreshed = await db.ref('cards/' + currentCardId).once('value').then(s => s.val());
@@ -950,8 +1078,9 @@ function renderAdminStats() {
   const cards = Object.values(allCards);
   const totalCash = cards.reduce((s,c) => s + c.amount, 0);
   const totalSpent = cards.reduce((s,c) => s + calcSpent(c), 0);
-  const breakdown = {5:0,10:0,15:0,20:0};
-  cards.forEach(c => { if (breakdown[c.amount] !== undefined) breakdown[c.amount]++; });
+  const breakdown = {};
+  cards.forEach(c => { breakdown[c.amount] = (breakdown[c.amount] || 0) + 1; });
+  const allAmounts = [...new Set([...cardAmounts, ...Object.keys(breakdown).map(Number)])].sort((a,b)=>a-b);
 
   document.getElementById('admin-stats-content').innerHTML = `
     <div class="stats-row">
@@ -964,12 +1093,278 @@ function renderAdminStats() {
     </div>
     <div class="card">
       <div class="card-label">Répartition</div>
-      ${[5,10,15,20].map(a=>`
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">
+      ${allAmounts.map(a => {
+        const n = breakdown[a] || 0;
+        return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">
           <span>Cartes ${a} €</span>
-          <span style="font-family:'DM Mono',monospace;color:var(--accent)">${breakdown[a]} × ${a} € = ${breakdown[a]*a} €</span>
-        </div>`).join('')}
+          <span style="font-family:'DM Mono',monospace;color:var(--accent)">${n} × ${a} € = ${n*a} €</span>
+        </div>`;
+      }).join('')}
     </div>`;
+
+  renderAmountsAdmin();
+  renderDrinksAdmin();
+}
+
+// ════════════════════════════════════════
+// CONSOMMATIONS
+// ════════════════════════════════════════
+async function loadDrinks() {
+  const snap = await db.ref('config/drinks').once('value');
+  const val = snap.val();
+  if (Array.isArray(val) && val.length) DRINKS = val;
+  else DRINKS = [...DRINKS_DEFAULT];
+}
+
+function renderDrinksAdmin() {
+  const el = document.getElementById('admin-drinks-list');
+  if (!el) return;
+  el.innerHTML = DRINKS.map(d => `
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+        <span style="font-size:14px;font-weight:600">${d.label}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--muted)">${d.price.toFixed(2)} €</span>
+          <button onclick="toggleDrinkEdit('${d.id}')" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text);cursor:pointer">Modifier</button>
+          <button onclick="removeDrink('${d.id}')" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--danger);cursor:pointer">✕</button>
+        </div>
+      </div>
+      <div id="drink-edit-${d.id}" style="display:none;padding-bottom:10px">
+        <div style="display:flex;gap:6px;align-items:center">
+          <input class="inp" style="margin:0;flex:1" id="drink-label-${d.id}" value="${d.label}" placeholder="Nom" />
+          <div style="position:relative;width:80px;flex-shrink:0">
+            <input type="number" class="inp" style="margin:0;padding-right:24px" id="drink-price-${d.id}" value="${d.price}" min="0.5" step="0.5" />
+            <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">€</span>
+          </div>
+          <button onclick="saveDrink('${d.id}')" style="background:var(--success);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;flex-shrink:0">✓</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleDrinkEdit(id) {
+  const el = document.getElementById('drink-edit-' + id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveDrink(id) {
+  const label = document.getElementById('drink-label-' + id).value.trim();
+  const price = parseFloat(document.getElementById('drink-price-' + id).value);
+  if (!label) { showToast('Nom requis'); return; }
+  if (!price || price <= 0) { showToast('Prix invalide'); return; }
+  DRINKS = DRINKS.map(d => d.id === id ? { ...d, label, price } : d);
+  await db.ref('config/drinks').set(DRINKS);
+  renderDrinksAdmin();
+  showToast('Consommation modifiée ✓');
+}
+
+async function addDrink() {
+  const label = document.getElementById('new-drink-label').value.trim();
+  const price = parseFloat(document.getElementById('new-drink-price').value);
+  if (!label) { showToast('Nom requis'); return; }
+  if (!price || price <= 0) { showToast('Prix invalide'); return; }
+  const id = label.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'') + '-' + Date.now();
+  DRINKS = [...DRINKS, { id, label, price }];
+  await db.ref('config/drinks').set(DRINKS);
+  document.getElementById('new-drink-label').value = '';
+  document.getElementById('new-drink-price').value = '';
+  renderDrinksAdmin();
+  showToast('Consommation ajoutée ✓');
+}
+
+async function removeDrink(id) {
+  if (!confirm('Supprimer cette consommation ?')) return;
+  DRINKS = DRINKS.filter(d => d.id !== id);
+  await db.ref('config/drinks').set(DRINKS);
+  renderDrinksAdmin();
+  showToast('Consommation supprimée ✓');
+}
+
+// ════════════════════════════════════════
+// VALEURS DE CARTES
+// ════════════════════════════════════════
+async function loadCardAmounts() {
+  const snap = await db.ref('config/cardAmounts').once('value');
+  const val = snap.val();
+  if (Array.isArray(val) && val.length) cardAmounts = val.map(Number).sort((a,b)=>a-b);
+  else cardAmounts = [5, 10, 15, 20];
+}
+
+function renderAmountsAdmin() {
+  const el = document.getElementById('admin-amounts-list');
+  if (!el) return;
+  el.innerHTML = cardAmounts.map(a => `
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+        <span style="font-size:14px;font-weight:600">${a} €</span>
+        <div style="display:flex;gap:8px">
+          <button onclick="toggleAmountEdit(${a})" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text);cursor:pointer">Modifier</button>
+          <button onclick="removeCardAmount(${a})" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--danger);cursor:pointer">✕</button>
+        </div>
+      </div>
+      <div id="amount-edit-${a}" style="display:none;padding-bottom:10px">
+        <div style="display:flex;gap:6px;align-items:center">
+          <div style="position:relative;flex:1">
+            <input type="number" class="inp" style="margin:0;padding-right:26px" id="amount-val-${a}" value="${a}" min="1" step="1" />
+            <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none">€</span>
+          </div>
+          <button onclick="saveCardAmount(${a})" style="background:var(--success);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;flex-shrink:0">✓</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleAmountEdit(a) {
+  const el = document.getElementById('amount-edit-' + a);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveCardAmount(oldVal) {
+  const input = document.getElementById('amount-val-' + oldVal);
+  const newVal = parseFloat(input.value);
+  if (!newVal || newVal <= 0) { showToast('Montant invalide'); return; }
+  if (newVal !== oldVal && cardAmounts.includes(newVal)) { showToast('Cette valeur existe déjà'); return; }
+  cardAmounts = cardAmounts.map(a => a === oldVal ? newVal : a).sort((a,b) => a-b);
+  await db.ref('config/cardAmounts').set(cardAmounts);
+  renderAmountsAdmin();
+  showToast('Valeur modifiée ✓');
+}
+
+async function addCardAmount() {
+  const input = document.getElementById('new-amount-input');
+  const val = parseFloat(input.value);
+  if (!val || val <= 0) { showToast('Montant invalide'); return; }
+  if (cardAmounts.includes(val)) { showToast('Cette valeur existe déjà'); return; }
+  cardAmounts = [...cardAmounts, val].sort((a,b)=>a-b);
+  await db.ref('config/cardAmounts').set(cardAmounts);
+  input.value = '';
+  renderAmountsAdmin();
+  showToast('Valeur ajoutée ✓');
+}
+
+async function removeCardAmount(amount) {
+  if (!confirm(`Supprimer la valeur ${amount} € ?`)) return;
+  cardAmounts = cardAmounts.filter(a => a !== amount);
+  await db.ref('config/cardAmounts').set(cardAmounts);
+  renderAmountsAdmin();
+  showToast('Valeur supprimée ✓');
+}
+
+// ════════════════════════════════════════
+// RECRÉDIT
+// ════════════════════════════════════════
+function openRecredit() {
+  document.getElementById('recredit-amount').value = '';
+  document.getElementById('recredit-pw').value = '';
+  document.getElementById('recredit-err').style.display = 'none';
+  document.getElementById('modal-recredit').classList.add('open');
+}
+
+async function confirmRecredit() {
+  const amount = parseFloat(document.getElementById('recredit-amount').value);
+  if (!amount || amount <= 0) { showToast('Montant invalide'); return; }
+  const pw = document.getElementById('recredit-pw').value;
+  const real = await db.ref('config/adminPw').once('value').then(s => s.val() || 'admin2024');
+  if (pw !== real) { document.getElementById('recredit-err').style.display = 'block'; return; }
+  const newAmount = (currentCardData.amount || 0) + amount;
+  await db.ref('cards/' + currentCardId + '/amount').set(newAmount);
+  // Si la carte était soldée, on la réactive
+  if (currentCardData.soldeeAt) {
+    await db.ref('cards/' + currentCardId + '/soldeeAt').remove();
+    if (currentCardData.uid) {
+      const activeSnap = await db.ref('users/' + currentCardData.uid + '/activeCardId').once('value');
+      if (!activeSnap.val()) await db.ref('users/' + currentCardData.uid + '/activeCardId').set(currentCardId);
+    }
+  }
+  closeModal('modal-recredit');
+  showToast(`+${amount.toFixed(2)} € recrédité ✓`);
+}
+
+// ════════════════════════════════════════
+// SUPPRESSION D'UN ITEM
+// ════════════════════════════════════════
+let pendingRemoveItem = null; // { txid, drinkId }
+
+function askRemoveItem(txid, drinkId) {
+  const d = DRINKS.find(x => x.id === drinkId);
+  pendingRemoveItem = { txid, drinkId };
+  document.getElementById('remove-item-label').textContent =
+    `Rembourser "${d ? d.label : drinkId}" et retirer cette consommation ?`;
+  document.getElementById('modal-remove-item').classList.add('open');
+}
+
+async function confirmRemoveItem() {
+  if (!pendingRemoveItem) return;
+
+  const { txid, drinkId } = pendingRemoveItem;
+  const txSnap = await db.ref('cards/' + currentCardId + '/transactions/' + txid).once('value');
+  const tx = txSnap.val();
+  if (!tx) { closeModal('modal-remove-item'); return; }
+
+  const items = { ...(tx.items || {}) };
+  if ((items[drinkId] || 0) <= 1) delete items[drinkId];
+  else items[drinkId]--;
+
+  if (Object.keys(items).length === 0) {
+    // Plus d'items → on supprime toute la transaction
+    await db.ref('cards/' + currentCardId + '/transactions/' + txid).remove();
+  } else {
+    // Recalcul du total
+    const newTotal = Object.entries(items).reduce((s, [did, qty]) => {
+      const d = DRINKS.find(x => x.id === did);
+      return s + (d ? d.price * qty : 0);
+    }, 0);
+    await db.ref('cards/' + currentCardId + '/transactions/' + txid).update({ items, total: newTotal });
+  }
+
+  // Réactiver la carte si elle était soldée et redevient positive
+  const refreshed = await db.ref('cards/' + currentCardId).once('value').then(s => s.val());
+  if (refreshed && refreshed.soldeeAt && calcSpent(refreshed) < refreshed.amount) {
+    await db.ref('cards/' + currentCardId + '/soldeeAt').remove();
+    if (refreshed.uid) {
+      const activeSnap = await db.ref('users/' + refreshed.uid + '/activeCardId').once('value');
+      if (!activeSnap.val()) await db.ref('users/' + refreshed.uid + '/activeCardId').set(currentCardId);
+    }
+  }
+
+  pendingRemoveItem = null;
+  closeModal('modal-remove-item');
+  showToast('Consommation supprimée ✓');
+}
+
+// ════════════════════════════════════════
+// SUPPRIMER LA CARTE
+// ════════════════════════════════════════
+function askDeleteCard() {
+  document.getElementById('modal-delete-card').classList.add('open');
+}
+
+async function confirmDeleteCard() {
+  if (!currentCardId) return;
+  closeModal('modal-delete-card');
+
+  // Arrêter le listener temps-réel sur la carte
+  if (liveUnsub) { liveUnsub(); liveUnsub = null; }
+
+  // Récupérer le uid lié à la carte avant suppression
+  const cardSnap = await db.ref('cards/' + currentCardId).once('value');
+  const cardData = cardSnap.val();
+
+  // Supprimer la carte dans Firebase
+  await db.ref('cards/' + currentCardId).remove();
+
+  // Si l'utilisateur avait cette carte comme activeCardId, le détacher
+  if (cardData && cardData.uid) {
+    const activeSnap = await db.ref('users/' + cardData.uid + '/activeCardId').once('value');
+    if (activeSnap.val() === currentCardId) {
+      await db.ref('users/' + cardData.uid + '/activeCardId').remove();
+    }
+  }
+
+  currentCardId = null;
+  currentCardData = null;
+  showToast('Carte supprimée ✓');
+  showScreen('screen-main');
 }
 
 async function changeEventName() {
@@ -1042,6 +1437,31 @@ function showToast(msg) {
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 2600);
 }
+
+// ════════════════════════════════════════
+// RACCOURCIS CLAVIER — Enter pour valider
+// ════════════════════════════════════════
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Enter') return;
+  const active = document.activeElement;
+  if (!active) return;
+  // Écran de connexion bar
+  if (active.id === 'access-code') { unlockBar(); return; }
+  // Écran admin — déverrouillage
+  if (active.id === 'admin-pw-input') { unlockAdmin(); return; }
+  // Modal changement de mot de passe
+  if (active.id === 'new-pw1' || active.id === 'new-pw2') { doChangePw(); return; }
+  // Modal re-crédit
+  if (active.id === 'recredit-amount' || active.id === 'recredit-pw') { confirmRecredit(); return; }
+  // Ajout valeur carte (Enter dans le champ montant)
+  if (active.id === 'new-amount-input') { addCardAmount(); return; }
+  // Écran commande — valider le panier
+  const screenOrder = document.getElementById('screen-order');
+  if (screenOrder && screenOrder.classList.contains('active')) {
+    const validateBtn = document.getElementById('validate-btn');
+    if (validateBtn && !validateBtn.disabled) { validateCart(); return; }
+  }
+});
 
 // Service Worker — récupère les màj de GitHub Pages dès qu'elles sont publiées
 if ('serviceWorker' in navigator) {
